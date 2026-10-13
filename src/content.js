@@ -23,8 +23,14 @@
 
   async function persist(nextState) {
     state = nextState;
+    applyTheme();
     await NS.storage.saveState(state);
     applySourceVisibility();
+  }
+
+  // styles/toledo-theme.css is scoped to html:not(.to-theme-off).
+  function applyTheme() {
+    document.documentElement.classList.toggle("to-theme-off", state?.themeEnabled === false);
   }
 
   function ensureCourseDefaults() {
@@ -68,6 +74,7 @@
     const wrappers = NS.detector.sourceWrappers(enrollments);
     const hide = state?.viewMode === "organizer";
     wrappers.forEach((wrapper) => wrapper.classList.toggle("to-source-hidden", hide));
+    document.documentElement.classList.toggle("to-organizer-shown", hide && wrappers.length > 0);
   }
 
   function clearSourceHidden() {
@@ -116,6 +123,7 @@
     courses = [];
     document.getElementById(ROOT_ID)?.remove();
     clearSourceHidden();
+    document.documentElement.classList.remove("to-organizer-shown");
   }
 
   async function scan({ force = false } = {}) {
@@ -183,6 +191,7 @@
 
   async function init() {
     state = await NS.storage.loadState();
+    applyTheme();
     prehide();
 
     // Observe before the first scan so nothing Toledo renders in between is missed.

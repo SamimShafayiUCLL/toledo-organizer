@@ -23,6 +23,7 @@ A browser extension for `https://toledo.kuleuven.be/` that shows your Toledo cou
 - Edit mode: management controls, colors and renaming stay hidden until you turn it on
 - Import and export settings as JSON
 - Toggle between the Organizer and the original Toledo view
+- Optional Toledo theme: a calmer look for the whole Toledo portal (top bar, menus, panels, updates, course list) that matches the organizer. Turn it off under Settings > Appearance (Instellingen > Uiterlijk).
 
 ![Edit mode](docs/screenshot-edit-mode.png)
 

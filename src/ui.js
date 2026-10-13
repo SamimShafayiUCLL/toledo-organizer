@@ -196,7 +196,13 @@
     }
 
     courseTitle(course) {
-      return this.courseSetting(course.key).customTitle || course.title;
+      const custom = this.courseSetting(course.key).customTitle;
+      if (custom) return custom;
+      // Toledo often repeats the code in the title ("Hematologie [E0I82a]"); the meta line already shows it.
+      const suffix = course.code ? ` [${course.code}]` : "";
+      const title = course.title || "";
+      if (suffix && title.toLowerCase().endsWith(suffix.toLowerCase())) return title.slice(0, -suffix.length).trim() || title;
+      return title;
     }
 
     versionLabel(course, version) {
@@ -685,6 +691,14 @@
           this.settingsCard("Debug", "Exporteer alleen de vakken die momenteel op Toledo gedetecteerd worden.", [
             button("Exporteer gedetecteerde vakken", "export-detected")
           ]),
+          this.settingsCard("Uiterlijk", "Geef heel Toledo een rustiger, moderner uiterlijk dat bij de organizer past.", [
+            button(
+              this.state.themeEnabled === false ? "Toledo-thema aanzetten" : "Toledo-thema uitzetten",
+              "toggle-theme",
+              "",
+              this.state.themeEnabled === false ? "primary" : ""
+            )
+          ]),
           this.settingsCard("Reset", "Verwijder alleen Toledo Organizer-instellingen. Toledo zelf wordt niet aangepast.", [
             button("Reset Organizer", "reset-organizer", "", "danger")
           ])
@@ -753,6 +767,7 @@
       if (action === "export-detected") return this.exportDetected();
       if (action === "import-settings") return this.root.querySelector('[data-role="import-file"]')?.click();
       if (action === "reset-organizer") return this.resetOrganizer();
+      if (action === "toggle-theme") return this.patchState({ themeEnabled: this.state.themeEnabled === false });
     }
 
     handleInput(event) {
@@ -1134,7 +1149,10 @@
       } catch {
         url = null;
       }
-      if (!url || url.origin !== location.origin) {
+      // Toledo course links redirect via other KU Leuven hosts (e.g. icts-p-toledo-journey.cloud.icts.kuleuven.be),
+      // so allow https links on KU Leuven / UCLL domains, not just this origin.
+      const trusted = /(^|\.)(kuleuven\.be|kuleuven\.cloud|ucll\.be)$/i;
+      if (!url || url.protocol !== "https:" || !trusted.test(url.hostname)) {
         this.toast("Deze link wijst naar een andere website en wordt niet geopend.");
         return;
       }
