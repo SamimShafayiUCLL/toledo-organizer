@@ -1,0 +1,69 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Toledo Organizer UI fixture</title>
+<link rel="stylesheet" href="../styles/organizer.css">
+<div id="mount"></div>
+<script>
+window.chrome = {
+  storage: { local: { get: async()=>({}), set: async()=>{} } },
+  runtime: { sendMessage: (_msg, cb)=>cb({ok:true}) }
+};
+</script>
+<script src="../src/storage.js"></script>
+<script src="../src/matcher.js"></script>
+<script src="../src/ui.js"></script>
+<script>
+(async () => {
+  const NS = window.ToledoOrganizer;
+  let state = NS.storage.defaultState();
+  state.groups = [
+    {id:'med', name:'Geneeskunde', parentId:null, order:0, collapsed:false, color:'#8b5cf6'},
+    {id:'phase1', name:'1ste fase', parentId:'med', order:0, collapsed:false, color:null},
+    {id:'sem2', name:'2de semester', parentId:'phase1', order:0, collapsed:false, color:null},
+    {id:NS.storage.OVERIG_ID, name:'Overig', parentId:null, order:1, collapsed:true, builtIn:true, color:null}
+  ];
+  state.courseSettings = {
+    'KUL:E0I54a': {groupId:'sem2', hidden:false, defaultVersion:'2526', versionNames:{}, order:0, color:'#ef4444'},
+    'UCLL:QM1359': {groupId:null, hidden:false, defaultVersion:null, versionNames:{}, order:1, color:null}
+  };
+  const courses = [
+    {
+      key:'KUL:E0I54a', title:'Anatomie II: theorie', type:'course', institution:'KUL', code:'E0I54a', semester:2,
+      versions:[
+        {rawId:'ULTRA-B-KUL-E0I54a-2627', title:'Anatomie II: theorie', originalTitle:'Anatomie II: theorie', institution:'KUL', type:'course', year:'2627', academicYear:'2026-2027', semester:2, available:false, unavailable:true, href:null},
+        {rawId:'ULTRA-B-KUL-E0I54a-2526', title:'Anatomie II: theorie', originalTitle:'Anatomie II: theorie [2526]', institution:'KUL', type:'course', year:'2526', academicYear:'2025-2026', semester:2, available:true, unavailable:false, href:'#old'}
+      ]
+    },
+    {
+      key:'UCLL:QM1359', title:'Klinische chemie 1 [QM1359]', type:'course', institution:'UCLL', code:'QM1359', semester:1,
+      versions:[{rawId:'ULTRA-B-UCLL-QM1359-2627', title:'Klinische chemie 1 [QM1359]', originalTitle:'Klinische chemie 1 [QM1359]', institution:'UCLL', type:'course', year:'2627', academicYear:'2026-2027', semester:1, available:true, unavailable:false, href:'#new'}]
+    }
+  ];
+  const enrollments = courses.flatMap(c => c.versions.map(v => ({...v,key:c.key,code:c.code,title:c.title})));
+  const ui = new NS.ui.OrganizerUI({
+    state,
+    onStateChange: async (next)=>{ state=next; },
+    getCourses: ()=>courses,
+    getEnrollments: ()=>enrollments
+  });
+  ui.mount(document.getElementById('mount'));
+
+  const results = {};
+  results.warningShown = document.body.textContent.includes('2026-2027 is niet beschikbaar op Toledo (KU Leuven)');
+  await ui.updateUIState({settingsOpen:true});
+  results.modalOpened = !!document.querySelector('.to-modal-overlay');
+  document.querySelector('[data-action="close-settings"]').click();
+  await new Promise(r=>setTimeout(r,20));
+  results.closeButtonWorks = !document.querySelector('.to-modal-overlay');
+  await ui.patchState({editMode:true});
+  results.editControlsShown = !!document.querySelector('[data-role="course-color"]') && !!document.querySelector('[data-action="rename-group"]');
+  await ui.patchState({editMode:false});
+  results.editControlsHidden = !document.querySelector('[data-role="course-color"]') && !document.querySelector('[data-action="rename-group"]');
+  await ui.patchState({courseSort:'az'});
+  results.sortControl = document.querySelector('[data-role="course-sort"]')?.value === 'az';
+  const result = document.createElement('pre');
+  result.id='test-results';
+  result.textContent=JSON.stringify(results);
+  document.body.appendChild(result);
+})();
+</script>
