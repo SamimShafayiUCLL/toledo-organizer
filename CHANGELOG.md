@@ -4,6 +4,8 @@
 
 - Nieuw ontwerp: vakken als rustige lijst in plaats van kaarten-in-kaarten, kleuren als bolletje in plaats van gekleurde linkerrand, lijn-iconen in plaats van emoji, knop "Bewerken"/"Klaar".
 - Werkt nu ook op smalle schermen zonder horizontaal scrollen.
+- Slepen verbeterd: sleep het hele vak (niet alleen het handvat), een lijn toont waar het vak terechtkomt (ook na het laatste vak), ingeklapte groepen gaan open als je erboven blijft hangen, de pagina scrolt mee aan de rand, en een melding bevestigt de verplaatsing.
+- Omhoog/omlaag-knoppen werken ook bij vakken met dezelfde volgorde-waarde.
 - Zoekveld verliest geen focus meer bij typen.
 - Tekstcursor (caret) is weer zichtbaar in invoervelden.
 - Organizer verdwijnt niet meer na terug-navigeren binnen Toledo (SPA-navigatie).
