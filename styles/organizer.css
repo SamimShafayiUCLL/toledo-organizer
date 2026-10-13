@@ -25,7 +25,11 @@
   font-size: 14px;
   line-height: 1.4;
   color-scheme: light;
+  position: relative;
 }
+
+/* Until the organizer has mounted, keep Toledo's own list invisible so it doesn't flash first. */
+html.to-prehide .tol-enrollment-container { visibility: hidden; }
 
 #toledo-organizer-root *,
 #toledo-organizer-root *::before,
@@ -423,7 +427,21 @@
 .to-group.drop-into .to-course { background: transparent; }
 .to-root-dropzone.drop-into { color: var(--to-accent); }
 
+.to-drop-line {
+  position: absolute;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--to-accent);
+  box-shadow: 0 0 0 2px var(--to-surface);
+  pointer-events: none;
+  z-index: 3;
+}
+.to-edit-mode .to-group-header[draggable="true"] { cursor: grab; }
+.to-edit-mode .to-group-header[draggable="true"] .to-group-title { cursor: grab; }
+.to-group-header[draggable="true"]:hover .to-group-drag { color: var(--to-muted); }
+
 .to-course.just-moved { animation: to-flash 1.2s ease-out; }
+.to-group.just-moved > .to-group-header { animation: to-flash 1.2s ease-out; }
 @keyframes to-flash {
   0%, 30% { background: var(--to-accent-soft); }
   100% { background: var(--to-surface); }

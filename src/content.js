@@ -7,7 +7,9 @@
   let enrollments = [];
   let courses = [];
   let ui;
-  let scanTimer;
+  let scanTimer = null;
+  let pendingForce = false;
+  let prehideTimer;
   let lastSignature = "";
   let lastUrl = location.href;
   let observer;
@@ -95,6 +97,19 @@
     else ui.render();
   }
 
+  // Hide Toledo's own list until the organizer is ready, so it doesn't flash first. Always released within 3s.
+  function prehide() {
+    if (state?.viewMode !== "organizer") return;
+    document.documentElement.classList.add("to-prehide");
+    clearTimeout(prehideTimer);
+    prehideTimer = setTimeout(releasePrehide, 3000);
+  }
+
+  function releasePrehide() {
+    clearTimeout(prehideTimer);
+    document.documentElement.classList.remove("to-prehide");
+  }
+
   function resetWhenNoEnrollments() {
     lastSignature = "";
     enrollments = [];
@@ -104,7 +119,6 @@
   }
 
   async function scan({ force = false } = {}) {
-    if (!location.href.startsWith("https://toledo.kuleuven.be/")) return;
     lastUrl = location.href;
 
     // Cheap short-circuit: no enrollment items on this page -> nothing to organise, nothing hidden.
@@ -124,6 +138,7 @@
       enrollments = detected;
       if (ui && !document.getElementById(ROOT_ID)) mountUi(findMountPoint());
       applySourceVisibility();
+      releasePrehide();
       return;
     }
     lastSignature = signature;
@@ -133,17 +148,27 @@
 
     mountUi(findMountPoint());
     applySourceVisibility();
+    releasePrehide();
   }
 
+  // Throttle, not debounce: Toledo mutates the DOM constantly while loading, and a debounce that
+  // restarts on every mutation kept postponing the first scan until the page went quiet.
   function scheduleScan(force = false) {
-    clearTimeout(scanTimer);
-    scanTimer = setTimeout(() => scan({ force }), 180);
+    pendingForce = pendingForce || force;
+    if (scanTimer) return;
+    scanTimer = setTimeout(() => {
+      scanTimer = null;
+      const forced = pendingForce;
+      pendingForce = false;
+      scan({ force: forced });
+    }, ui ? 150 : 30);
   }
 
   // Blackboard Ultra navigates with history.pushState, which fires no event: detect it by URL comparison.
   function checkUrlChange() {
     if (location.href === lastUrl) return false;
     lastUrl = location.href;
+    prehide();
     scheduleScan(true);
     return true;
   }
@@ -158,13 +183,15 @@
 
   async function init() {
     state = await NS.storage.loadState();
-    await scan({ force: true });
+    prehide();
 
+    // Observe before the first scan so nothing Toledo renders in between is missed.
     observer = new MutationObserver((mutations) => {
       if (checkUrlChange()) return;
       if (mutations.some(isRelevantMutation)) scheduleScan(false);
     });
     observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["class", "href"] });
+    await scan({ force: true });
 
     window.addEventListener("hashchange", () => scheduleScan(true));
     window.addEventListener("popstate", () => scheduleScan(true));
