@@ -1,0 +1,271 @@
+/*
+  Toledo portal theme. Restyles Toledo's own Bootstrap 3 page (top bar, menu, panels,
+  updates list, course list) to match the organizer. Everything is scoped under
+  html:not(.to-theme-off), so the "Toledo-thema" setting can switch it off instantly.
+  Selectors are tied to Toledo's markup (2026) and may need updates when Toledo changes.
+*/
+
+html:not(.to-theme-off) {
+  --tt-brand: #00506b;
+  --tt-brand-deep: #003f55;
+  --tt-accent: #00627f;
+  --tt-accent-soft: #e6f1f5;
+  --tt-text: #1d2433;
+  --tt-muted: #5d6879;
+  --tt-faint: #8e98a8;
+  --tt-line: #e3e7ed;
+  --tt-line-soft: #eef0f4;
+  --tt-bg: #f3f5f8;
+  --tt-surface: #ffffff;
+  --tt-hover: #f5f7f9;
+  --tt-radius: 12px;
+  --tt-font: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, Roboto, "Helvetica Neue", Arial, sans-serif;
+
+  body {
+    background: var(--tt-bg) !important;
+    color: var(--tt-text);
+    font-family: var(--tt-font) !important;
+    -webkit-font-smoothing: antialiased;
+  }
+  h1, h2, h3, h4, h5, h6, .btn, .form-control, .dropdown-menu, .tooltip, .popover { font-family: var(--tt-font); }
+
+  /* ---------- Top bar ---------- */
+  .navbar-primary {
+    background: var(--tt-brand) !important;
+    background-image: none !important;
+    border: 0 !important;
+    box-shadow: 0 1px 0 rgba(0, 0, 0, 0.08);
+    min-height: 56px;
+  }
+
+  .navbar-primary .navbar-brand { opacity: 0.95; }
+
+  #portal-search { max-width: 460px; }
+  #portal-search .form-control {
+    height: 34px;
+    border: 1px solid rgba(255, 255, 255, 0.14) !important;
+    border-radius: 9px 0 0 9px !important;
+    background: rgba(255, 255, 255, 0.12) !important;
+    color: #fff !important;
+    caret-color: #fff;
+    -webkit-text-fill-color: #fff;
+    box-shadow: none !important;
+    font-size: 13.5px;
+    padding-left: 12px;
+    transition: background-color 120ms ease, border-color 120ms ease;
+  }
+  #portal-search .form-control::placeholder { color: rgba(255, 255, 255, 0.62); -webkit-text-fill-color: rgba(255, 255, 255, 0.62); }
+  #portal-search .form-control:focus {
+    background: #fff !important;
+    color: var(--tt-text) !important;
+    caret-color: var(--tt-text);
+    -webkit-text-fill-color: var(--tt-text);
+    border-color: #fff !important;
+  }
+  #portal-search .form-control:focus::placeholder { color: var(--tt-faint); -webkit-text-fill-color: var(--tt-faint); }
+  #portal-search .btn {
+    height: 34px;
+    border: 1px solid rgba(255, 255, 255, 0.14) !important;
+    border-left: 0 !important;
+    border-radius: 0 9px 9px 0 !important;
+    background: rgba(255, 255, 255, 0.2) !important;
+    color: #fff !important;
+    font-weight: 600;
+    text-shadow: none;
+    box-shadow: none !important;
+  }
+  #portal-search .btn:hover { background: rgba(255, 255, 255, 0.3) !important; }
+
+  #tol-primary-navigation > li > a {
+    color: rgba(255, 255, 255, 0.86) !important;
+    background: transparent !important;
+    border-radius: 9px;
+    transition: background-color 120ms ease, color 120ms ease;
+  }
+  #tol-primary-navigation > li > a:hover,
+  #tol-primary-navigation > li.open > a { color: #fff !important; background: rgba(255, 255, 255, 0.12) !important; }
+  #tol-primary-navigation .glyphicon { font-size: 17px; }
+  #tol-primary-navigation .badge,
+  .navbar .tol-events-badge.badge {
+    min-width: 18px;
+    padding: 2px 5px;
+    border-radius: 999px;
+    background: #e5484d !important;
+    color: #fff !important;
+    box-shadow: 0 0 0 2px var(--tt-brand);
+    font-size: 10.5px;
+    font-weight: 700;
+    line-height: 14px;
+  }
+
+  /* ---------- Menu bar ---------- */
+  .navbar-secondary {
+    background: var(--tt-surface) !important;
+    border: 0 !important;
+    border-bottom: 1px solid var(--tt-line) !important;
+    box-shadow: none !important;
+    min-height: 46px;
+  }
+  .navbar-secondary .navbar-nav > li > a {
+    padding-top: 13px;
+    padding-bottom: 13px;
+    color: var(--tt-muted) !important;
+    font-size: 13.5px;
+    font-weight: 500;
+    background: transparent !important;
+    transition: color 120ms ease;
+  }
+  .navbar-secondary .navbar-nav > li > a:hover,
+  .navbar-secondary .navbar-nav > li.open > a { color: var(--tt-text) !important; }
+  .navbar-secondary .navbar-nav > li.open > a { box-shadow: inset 0 -2px 0 var(--tt-accent); }
+  .navbar-secondary .caret { opacity: 0.55; margin-left: 4px; }
+
+  /* Dropdowns everywhere */
+  .dropdown-menu {
+    padding: 6px;
+    border: 1px solid var(--tt-line) !important;
+    border-radius: 10px !important;
+    box-shadow: 0 12px 32px rgba(16, 24, 40, 0.14) !important;
+    font-size: 13.5px;
+  }
+  .dropdown-menu > li > a {
+    padding: 7px 10px;
+    border-radius: 7px;
+    color: var(--tt-text);
+  }
+  .dropdown-menu > li > a:hover,
+  .dropdown-menu > li > a:focus { background: var(--tt-hover) !important; color: var(--tt-text) !important; }
+  .dropdown-menu .divider { margin: 6px 4px; background: var(--tt-line-soft); }
+  .dropdown-header { padding: 8px 10px 4px; color: var(--tt-faint); font-size: 11.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+
+  /* ---------- Page ---------- */
+  .main-content { padding-top: 24px; }
+
+  .panel {
+    border: 1px solid var(--tt-line) !important;
+    border-radius: var(--tt-radius) !important;
+    box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04) !important;
+    background: var(--tt-surface);
+    overflow: hidden;
+  }
+  .panel > .panel-heading,
+  .panel-heading.tol-panel-title {
+    padding: 13px 16px;
+    background: var(--tt-surface) !important;
+    border-bottom: 1px solid var(--tt-line-soft) !important;
+    color: var(--tt-text) !important;
+    font-size: 14px !important;
+    font-weight: 650 !important;
+  }
+  .panel .panel-title { font-size: 14px; font-weight: 650; color: var(--tt-text); }
+  .panel-footer { background: var(--tt-surface); border-top: 1px solid var(--tt-line-soft); }
+
+  a { color: var(--tt-accent); }
+  a:hover, a:focus { color: var(--tt-brand-deep); }
+
+  .btn { border-radius: 8px; font-weight: 500; text-shadow: none; box-shadow: none; }
+  .btn-default { border-color: var(--tt-line); color: var(--tt-text); background: var(--tt-surface); }
+  .btn-default:hover { background: var(--tt-hover); border-color: #cfd5de; }
+  .btn-primary,
+  .btn-primary.active { background: var(--tt-accent) !important; border-color: var(--tt-accent) !important; background-image: none !important; }
+  .form-control {
+    border-color: var(--tt-line);
+    border-radius: 8px;
+    box-shadow: none;
+    color: var(--tt-text);
+  }
+  .form-control:focus { border-color: var(--tt-accent); box-shadow: 0 0 0 3px var(--tt-accent-soft); }
+  .label-warning { background: #f5a524; border-radius: 6px; font-weight: 600; }
+
+  /* Informatie */
+  .tol-information .panel-body { padding: 10px 16px 14px; }
+  .tol-info-links { margin: 0; }
+  .tol-info-links > li { padding: 5px 0; font-size: 13.5px; line-height: 1.45; }
+  .tol-info-links .fa-external-link { color: var(--tt-faint); font-size: 12px; margin-left: 4px; }
+
+  /* Updates en communicatie */
+  .tol-events-widget .panel-body { padding: 0; }
+  .tol-event {
+    background: var(--tt-surface) !important;
+    border-bottom: 1px solid var(--tt-line-soft) !important;
+    transition: background-color 120ms ease;
+  }
+  .tol-event:hover { background: var(--tt-hover) !important; }
+  .tol-event > a { display: block; padding-top: 11px; padding-bottom: 11px; }
+  .tol-event::before { transform: scale(0.9); }
+  .tol-event .tol-title { color: var(--tt-text); font-size: 13.5px; font-weight: 600; margin: 0 0 2px; }
+  .tol-event .tol-date { color: var(--tt-faint); font-size: 11.5px; }
+  .tol-event .tol-what-happened { color: var(--tt-muted); }
+  .tol-event .tol-what-happened strong { font-weight: 600; color: var(--tt-text); }
+  .tol-event.tol-unread-item .tol-title::after {
+    content: "";
+    display: inline-block;
+    width: 7px;
+    height: 7px;
+    margin-left: 7px;
+    border-radius: 50%;
+    background: var(--tt-accent);
+    vertical-align: 1px;
+  }
+  .tol-event .tol-is-new { display: none; }
+  /* Course source: colored dot instead of Toledo's colored left bar. The dot is drawn with the
+     inherited left-border colour (set per course colour by Toledo). */
+  .tol-event .tol-source {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    margin-top: 3px;
+    padding-left: 0 !important;
+    border-left-width: 0 !important;
+    color: var(--tt-faint);
+    font-style: normal;
+  }
+  .tol-event .tol-source::before {
+    content: "";
+    flex: none;
+    width: 0;
+    height: 8px;
+    border-left: 8px solid;
+    border-left-color: inherit;
+    border-radius: 50%;
+  }
+
+  /* ---------- Toledo's own course list ---------- */
+  .toledo-enrollments-list { background: var(--tt-surface) !important; }
+  .toledo-enrollments-list > .panel-heading { background: var(--tt-surface) !important; }
+  .toledo-filter-bar .btn-group > .btn { border-radius: 0; }
+  .toledo-filter-bar .btn-group > .btn:first-child { border-radius: 8px 0 0 8px; }
+  .toledo-filter-bar .btn-group > .btn:last-child { border-radius: 0 8px 8px 0; }
+  .toledo-filter-bar .btn-group > .btn:only-child { border-radius: 8px; }
+
+  .toledo-enrollments-list .panel-body { padding: 0 !important; }
+  .toledo-enrollments-list .panel-body > .row { margin: 0; }
+  .enrollment-list-item {
+    position: relative;
+    margin: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    border-top: 1px solid var(--tt-line-soft) !important;
+    background: var(--tt-surface) !important;
+    transition: background-color 120ms ease;
+  }
+  .enrollment-list-item:hover { background: #fbfbfc !important; }
+  /* No colour stripe: the tinted course icon already carries the course colour. */
+  .enrollment-list-item .color-indicator { display: none !important; }
+  .enrollment-list-item .right-area { margin-left: 0 !important; width: 100% !important; }
+  .enrollment-list-item .learning-unit-title { color: var(--tt-text); font-weight: 600; }
+  .enrollment-list-item .learning-unit-id { color: var(--tt-faint); font-size: 12px; }
+  .enrollment-list-item.enrollment-unavailable .learning-unit-title { color: var(--tt-muted); }
+
+  /* While the organizer is shown, Toledo's filter bar is redundant (the organizer has its own search)
+     and the list panel only frames the organizer, so it becomes transparent. */
+  &.to-organizer-shown {
+    .toledo-enrollments-list > .panel-heading { display: none; }
+    .toledo-enrollments-list {
+      background: transparent !important;
+      border: 0 !important;
+      box-shadow: none !important;
+      overflow: visible;
+    }
+  }
+}

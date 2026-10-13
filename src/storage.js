@@ -11,6 +11,7 @@
     search: "",
     editMode: false,
     courseSort: "custom",
+    themeEnabled: true,
     groups: [
       {
         id: OVERIG_ID,
@@ -132,6 +133,7 @@
       search: "", // transient: never restored
       editMode: Boolean(saved.editMode),
       courseSort: ["custom", "az", "za"].includes(saved.courseSort) ? saved.courseSort : "custom",
+      themeEnabled: saved.themeEnabled !== false,
       groups,
       courseSettings: sanitizeCourseSettings(saved.courseSettings, groupIds),
       ui: {

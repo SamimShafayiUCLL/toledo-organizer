@@ -24,7 +24,7 @@
         "src/ui.js",
         "src/content.js"
       ],
-      "css": ["styles/organizer.css"],
+      "css": ["styles/toledo-theme.css", "styles/organizer.css"],
       "run_at": "document_end"
     }
   ]
