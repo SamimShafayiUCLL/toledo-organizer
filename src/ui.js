@@ -424,20 +424,14 @@
       const descendantCourseCount = this.countDescendantCourses(group.id, groupsMap, byGroup);
       const hasColor = validColor(group.color);
       const section = el("section", {
-        class: `to-group depth-${depth}${group.collapsed ? " collapsed" : ""}`,
+        class: `to-group depth-${depth}${group.collapsed ? " collapsed" : ""}${this.flashGroupId === group.id ? " just-moved" : ""}`,
         "data-group-id": group.id,
         "data-drop-type": this.state.editMode ? "course-group" : null
       });
 
       const titleChildren = [];
       if (this.state.editMode) {
-        const grip = el("span", {
-          class: "to-group-drag",
-          draggable: true,
-          "data-drag-type": "group",
-          "data-group-id": group.id,
-          title: "Sleep groep"
-        });
+        const grip = el("span", { class: "to-group-drag", title: "Sleep om te verplaatsen", "aria-hidden": "true" });
         grip.append(icon("grip", "fill"));
         titleChildren.push(grip);
       }
@@ -467,6 +461,8 @@
         {
           class: "to-group-header",
           "data-drop-type": this.state.editMode ? "group-target" : null,
+          "data-drag-type": this.state.editMode ? "group" : null,
+          draggable: this.state.editMode ? true : null,
           "data-group-id": group.id
         },
         [el("div", { class: "to-group-title-wrap" }, titleChildren.filter(Boolean)), actions]
@@ -823,9 +819,10 @@
     // Works out what a drop at the pointer would do: insert before/after a course, or move into a group.
     resolveDrop(event) {
       const zone = event.target.closest?.("[data-drop-type]");
+      const drag = this.dragData;
+      if (drag.type === "group") return this.resolveGroupDrop(event);
       if (!zone || !this.root.contains(zone)) return null;
       const type = zone.dataset.dropType;
-      const drag = this.dragData;
 
       if (drag.type === "course") {
         if (type === "course-order") {
@@ -851,14 +848,64 @@
         return null;
       }
 
-      if (drag.type === "group") {
-        if (type === "root-groups") return { el: zone, cls: "drop-into", kind: "group-root" };
-        const section = type === "group-target" ? zone.closest(".to-group") : null;
-        const groupId = section?.dataset.groupId;
-        if (!groupId || groupId === drag.id) return null;
-        return { el: section, cls: "drop-into", kind: "group-into", groupId };
-      }
       return null;
+    }
+
+    // Group drags: top of a header = before it, middle = inside it, bottom = after it
+    // (bottom only when the group is closed; for an open group "after" is its bottom edge).
+    resolveGroupDrop(event) {
+      const drag = this.dragData;
+      const target = event.target;
+      const dropzone = target.closest?.('[data-drop-type="root-groups"]');
+      if (dropzone) return { el: dropzone, cls: "drop-into", kind: "group-into", groupId: null };
+
+      const header = target.closest?.(".to-group-header");
+      if (header && this.root.contains(header)) {
+        const section = header.closest(".to-group");
+        if (section.classList.contains("to-unassigned")) return this.groupGapDrop(event);
+        const rect = header.getBoundingClientRect();
+        const rel = (event.clientY - rect.top) / rect.height;
+        const open = !section.classList.contains("collapsed");
+        if (rel < 0.33) return this.groupLineDrop(section, "before");
+        if (rel > 0.67 && !open) return this.groupLineDrop(section, "after");
+        return this.groupIntoDrop(section) || this.groupLineDrop(section, rel < 0.5 ? "before" : "after");
+      }
+
+      const section = target.closest?.(".to-group");
+      if (section && !section.classList.contains("to-unassigned") && this.root.contains(section)) {
+        const rect = section.getBoundingClientRect();
+        return event.clientY > rect.bottom - 14 ? this.groupLineDrop(section, "after") : null;
+      }
+      if (target.closest?.(".to-structure")) return this.groupGapDrop(event);
+      return null;
+    }
+
+    // Pointer between top-level cards (or on "Niet ingedeeld"): place relative to the nearest root group.
+    groupGapDrop(event) {
+      const roots = [...this.root.querySelectorAll(".to-structure > .to-group.depth-1")];
+      const next = roots.find((section) => event.clientY < section.getBoundingClientRect().top + 8);
+      if (next) return this.groupLineDrop(next, "before");
+      return roots.length ? this.groupLineDrop(roots[roots.length - 1], "after") : null;
+    }
+
+    canPlaceGroup(groupId, parentId) {
+      if (!parentId) return this.maxSubtreeDepth(groupId) <= 3;
+      if (parentId === groupId || NS.matcher.descendants(groupId, this.state.groups).has(parentId)) return false;
+      return NS.matcher.groupDepth(parentId, this.state.groups) + this.maxSubtreeDepth(groupId) <= 3;
+    }
+
+    groupLineDrop(section, position) {
+      const refId = section.dataset.groupId;
+      if (!refId || refId === this.dragData.id) return null;
+      const ref = this.state.groups.find((g) => g.id === refId);
+      if (!ref || !this.canPlaceGroup(this.dragData.id, ref.parentId || null)) return null;
+      return { el: section, line: position, kind: "group-line", position, refId, groupId: ref.parentId || null };
+    }
+
+    groupIntoDrop(section) {
+      const groupId = section.dataset.groupId;
+      if (!groupId || !this.canPlaceGroup(this.dragData.id, groupId)) return null;
+      return { el: section, cls: "drop-into", kind: "group-into", groupId };
     }
 
     groupDrop(section) {
@@ -868,10 +915,30 @@
 
     setDropTarget(target) {
       const prev = this.dropTarget;
-      if (prev && target && prev.el === target.el && prev.cls === target.cls) return;
-      prev?.el.classList.remove(prev.cls);
-      this.dropTarget = target;
-      target?.el.classList.add(target.cls);
+      if (!(prev && target && prev.el === target.el && prev.cls === target.cls && prev.line === target.line)) {
+        if (prev?.cls) prev.el.classList.remove(prev.cls);
+        if (target?.cls) target.el.classList.add(target.cls);
+        this.dropTarget = target;
+      }
+      this.placeDropLine(target?.line ? target : null);
+    }
+
+    // A group's insertion line lives outside the group (between cards), so it is a positioned element, not a pseudo.
+    placeDropLine(target) {
+      if (!target) {
+        this.dropLine?.remove();
+        return;
+      }
+      if (!this.dropLine) this.dropLine = el("div", { class: "to-drop-line", "aria-hidden": "true" });
+      if (!this.dropLine.isConnected) this.root.append(this.dropLine);
+      const rootRect = this.root.getBoundingClientRect();
+      const rect = target.el.getBoundingClientRect();
+      const outside = target.el.classList.contains("depth-1") ? 6 : 0;
+      const y = target.line === "before" ? rect.top - outside - 1 : rect.bottom + outside - 1;
+      const indent = parseFloat(getComputedStyle(target.el).getPropertyValue("--to-indent")) || 0;
+      this.dropLine.style.top = `${y - rootRect.top}px`;
+      this.dropLine.style.left = `${rect.left - rootRect.left + indent + 8}px`;
+      this.dropLine.style.width = `${Math.max(40, rect.width - indent - 16)}px`;
     }
 
     handleDragOver(event) {
@@ -922,8 +989,8 @@
           await this.placeCourse(drag.key, target.groupId, null, "end", expandedIds);
         }
       } else if (drag.type === "group") {
-        if (target.kind === "group-root") await this.moveGroup(drag.id, null);
-        else if (target.kind === "group-into") await this.moveGroup(drag.id, target.groupId);
+        if (target.kind === "group-into") await this.placeGroup(drag.id, target.groupId, null, "end", expandedIds);
+        else if (target.kind === "group-line") await this.placeGroup(drag.id, target.groupId, target.refId, target.position);
       }
     }
 
@@ -931,6 +998,7 @@
       clearTimeout(this.expandTimer?.id);
       this.expandTimer = null;
       this.setDropTarget(null);
+      this.dropLine?.remove();
       this.dragData = null;
       this.clearDragStyles();
     }
@@ -1008,12 +1076,7 @@
       const index = siblings.findIndex((g) => g.id === groupId);
       const target = siblings[index + delta];
       if (!target) return;
-      const groups = this.state.groups.map((g) => {
-        if (g.id === group.id) return { ...g, order: target.order ?? index + delta };
-        if (g.id === target.id) return { ...g, order: group.order ?? index };
-        return g;
-      });
-      await this.patchState({ groups });
+      await this.placeGroup(groupId, group.parentId || null, target.id, delta < 0 ? "before" : "after");
     }
 
     async toggleGroup(groupId) {
@@ -1191,23 +1254,44 @@
       }, 1200);
     }
 
-    async moveGroup(groupId, targetParentId) {
-      if (!groupId || groupId === targetParentId) return;
+    // Moves a group under parentId, before/after refId or at the end, and renumbers its new siblings.
+    async placeGroup(groupId, parentId, refId = null, position = "end", expandGroupIds = []) {
       const group = this.state.groups.find((g) => g.id === groupId);
       if (!group) return;
-      const descendants = NS.matcher.descendants(groupId, this.state.groups);
-      if (targetParentId && descendants.has(targetParentId)) {
+      const parent = parentId || null;
+      if (parent && (parent === groupId || NS.matcher.descendants(groupId, this.state.groups).has(parent))) {
         return this.toast("Een groep kan niet in een eigen subgroep worden geplaatst.");
       }
-      const targetDepth = targetParentId ? NS.matcher.groupDepth(targetParentId, this.state.groups) : 0;
-      const subtreeDepth = this.maxSubtreeDepth(groupId);
-      if (targetDepth + subtreeDepth > 3) {
-        return this.toast("Deze verplaatsing zou meer dan 3 niveaus maken.");
+      if (!this.canPlaceGroup(groupId, parent)) return this.toast("Deze verplaatsing zou meer dan 3 niveaus maken.");
+
+      const siblings = this.state.groups
+        .filter((g) => (g.parentId || null) === parent && g.id !== groupId)
+        .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+      let index = siblings.length;
+      if (refId) {
+        const refIndex = siblings.findIndex((g) => g.id === refId);
+        if (refIndex >= 0) index = position === "after" ? refIndex + 1 : refIndex;
       }
-      const siblings = this.state.groups.filter((g) => (g.parentId || null) === (targetParentId || null) && g.id !== groupId);
-      const nextOrder = siblings.length ? Math.max(...siblings.map((g) => g.order ?? 0)) + 1 : 0;
-      const groups = this.state.groups.map((g) => (g.id === groupId ? { ...g, parentId: targetParentId || null, order: nextOrder } : g));
+      siblings.splice(index, 0, group);
+      const order = new Map(siblings.map((g, i) => [g.id, i]));
+
+      const groups = this.state.groups.map((g) => {
+        let next = g;
+        if (g.id === groupId) next = { ...g, parentId: parent };
+        if (order.has(g.id)) next = { ...next, order: order.get(g.id) };
+        if (g.id === parent && expandGroupIds.includes(g.id)) next = { ...next, collapsed: false };
+        return next;
+      });
+      this.flashGroup(groupId);
       await this.patchState({ groups });
+    }
+
+    flashGroup(groupId) {
+      this.flashGroupId = groupId;
+      clearTimeout(this.flashGroupTimer);
+      this.flashGroupTimer = setTimeout(() => {
+        this.flashGroupId = null;
+      }, 1200);
     }
 
     maxSubtreeDepth(groupId) {

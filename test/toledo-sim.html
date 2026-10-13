@@ -1,0 +1,56 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Toledo Organizer startup simulation</title>
+<link rel="stylesheet" href="../styles/organizer.css">
+<style>
+  body { margin: 0; padding: 24px; background: #f2f4f8; font: 14px/1.4 "Segoe UI", system-ui, sans-serif; }
+  #page { max-width: 1000px; margin: 0 auto; }
+</style>
+<!--
+  Simulates Toledo's course list loading late while the page keeps mutating (spinner ticks),
+  then reports how long the organizer took to appear. Serve the repo root over http.
+-->
+<div id="page"><div id="spinner">Loading</div><div id="list-host"></div></div>
+<pre id="timing"></pre>
+<script>
+window.chrome = {
+  storage: { local: { get: async () => ({}), set: async () => {} } },
+  runtime: { sendMessage: (_msg, cb) => cb({ ok: true }) }
+};
+// Constant DOM churn, like Toledo's loaders and live widgets.
+setInterval(() => { document.getElementById("spinner").textContent = "Loading " + Date.now(); }, 40);
+
+const courses = [
+  ["ULTRA-B-KUL-E0I54a-2526", "Anatomie II: theorie [2526]"],
+  ["ULTRA-B-KUL-E0I54a-2627", "Anatomie II: theorie"],
+  ["ULTRA-B-KUL-E0I12b-2526", "Fysiologie I"],
+  ["ULTRA-B-UCLL-QM1359-2627", "Klinische chemie 1"]
+];
+setTimeout(() => {
+  const wrapper = document.createElement("div");
+  const container = document.createElement("div");
+  container.className = "tol-enrollment-container";
+  for (const [id, title] of courses) {
+    const item = document.createElement("div");
+    item.className = "enrollment-list-item tol-enrollment learningunit-type-course enabled";
+    item.innerHTML = `<a class="enrollment-clickable-area" href="#${id}"></a><span class="learning-unit-title"></span><span class="learning-unit-id"></span>`;
+    item.querySelector(".learning-unit-title").textContent = title;
+    item.querySelector(".learning-unit-id").textContent = id;
+    container.append(item);
+  }
+  wrapper.append(container);
+  const watcher = new MutationObserver(() => {
+    if (!document.getElementById("toledo-organizer-root")) return;
+    watcher.disconnect();
+    document.getElementById("timing").textContent = `organizer shown ${Math.round(performance.now() - window.__listAt)} ms after the list appeared`;
+  });
+  watcher.observe(document.getElementById("page"), { childList: true, subtree: true });
+  window.__listAt = performance.now();
+  document.getElementById("list-host").append(wrapper);
+}, 600);
+</script>
+<script src="../src/storage.js"></script>
+<script src="../src/detector.js"></script>
+<script src="../src/matcher.js"></script>
+<script src="../src/ui.js"></script>
+<script src="../src/content.js"></script>

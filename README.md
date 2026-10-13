@@ -58,7 +58,7 @@ The extension is plain JavaScript with no build step. To try the UI without Tole
 python -m http.server
 ```
 
-Then open http://localhost:8000/test/demo.html (add `?edit=1` for edit mode). `test/ui-fixture.html` can be opened the same way.
+Then open http://localhost:8000/test/demo.html (add `?edit=1` for edit mode, `?settings=1` for the settings dialog). `test/ui-fixture.html` runs a few UI checks, and `test/toledo-sim.html` simulates a slow-loading Toledo page and reports how quickly the organizer appears.
 
 ## License
 

@@ -25,7 +25,7 @@
         "src/content.js"
       ],
       "css": ["styles/organizer.css"],
-      "run_at": "document_idle"
+      "run_at": "document_end"
     }
   ]
 }
