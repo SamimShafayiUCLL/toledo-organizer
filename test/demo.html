@@ -1,0 +1,78 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Toledo Organizer demo</title>
+<link rel="stylesheet" href="../styles/organizer.css">
+<style>
+  body { margin: 0; padding: 24px; background: #f2f4f8; font: 14px/1.4 "Segoe UI", system-ui, sans-serif; }
+  #mount { max-width: 1000px; margin: 0 auto; }
+</style>
+<div id="mount"></div>
+<!-- Demo data for README screenshots. Open with ?edit=1 for edit mode. Serve the repo root over http. -->
+<script>
+window.chrome = {
+  storage: { local: { get: async () => ({}), set: async () => {} } },
+  runtime: { sendMessage: (_msg, cb) => cb({ ok: true }) }
+};
+</script>
+<script src="../src/storage.js"></script>
+<script src="../src/matcher.js"></script>
+<script src="../src/ui.js"></script>
+<script>
+(async () => {
+  const NS = window.ToledoOrganizer;
+  const params = new URLSearchParams(location.search);
+
+  const v = (inst, code, year, title, available = true) => ({
+    rawId: `ULTRA-B-${inst === "KUL" ? "KUL" : "UCLL"}-${code}-${year}`,
+    title, originalTitle: title, institution: inst, type: "course", year,
+    academicYear: `20${year.slice(0, 2)}-20${year.slice(2)}`,
+    available, unavailable: !available, href: available ? "#" : null
+  });
+  const course = (inst, code, title, years, extra = {}) => ({
+    key: `${inst}:${code}`, title, type: "course", institution: inst, code,
+    versions: years.map(([y, ok]) => v(inst, code, y, title, ok)), ...extra
+  });
+
+  const courses = [
+    course("KUL", "E0I54a", "Anatomie II: theorie", [["2627", false], ["2526", true]]),
+    course("KUL", "E0I12b", "Fysiologie I", [["2526", true]]),
+    course("KUL", "E0I31a", "Biochemie", [["2526", true], ["2425", true]]),
+    course("KUL", "E0J08a", "Histologie", [["2526", true]]),
+    course("UCLL", "QM1359", "Klinische chemie 1", [["2627", true]]),
+    course("UCLL", "QM1402", "Hematologie", [["2627", true]]),
+    course("KUL", "E0K77a", "Medische statistiek", [["2627", true]])
+  ];
+
+  const state = NS.storage.defaultState();
+  state.editMode = params.get("edit") === "1";
+  state.groups = [
+    { id: "med", name: "Geneeskunde", parentId: null, order: 0, collapsed: false, color: "#7c5cdb" },
+    { id: "f1", name: "1ste fase", parentId: "med", order: 0, collapsed: false, color: null },
+    { id: "s1", name: "1ste semester", parentId: "f1", order: 0, collapsed: false, color: null },
+    { id: "s2", name: "2de semester", parentId: "f1", order: 1, collapsed: false, color: null },
+    { id: "blt", name: "MLT / Biomedische Laboratoriumtechnologie", parentId: null, order: 1, collapsed: false, color: "#2f9e7a" },
+    { id: NS.storage.OVERIG_ID, name: "Overig", parentId: null, order: 2, collapsed: true, builtIn: true, color: null }
+  ];
+  const set = (groupId, order, extra = {}) => ({ groupId, hidden: false, defaultVersion: null, versionNames: {}, customTitle: null, color: null, order, ...extra });
+  state.courseSettings = {
+    "KUL:E0I54a": set("s2", 0, { defaultVersion: "2526", color: "#e5534b" }),
+    "KUL:E0I12b": set("s1", 0),
+    "KUL:E0I31a": set("s1", 1, { defaultVersion: "2526", versionNames: { "2425": "Volledige cursus" } }),
+    "KUL:E0J08a": set("s2", 1),
+    "UCLL:QM1359": set("blt", 0, { color: "#e0a526" }),
+    "UCLL:QM1402": set("blt", 1),
+    "KUL:E0K77a": set(null, 0)
+  };
+
+  const enrollments = courses.flatMap((c) => c.versions.map((x) => ({ ...x, key: c.key, code: c.code })));
+  const ui = new NS.ui.OrganizerUI({
+    state: NS.storage.validateImportedState(state),
+    onStateChange: async () => {},
+    getCourses: () => courses,
+    getEnrollments: () => enrollments
+  });
+  ui.expandedCourses.add("KUL:E0I31a");
+  ui.mount(document.getElementById("mount"));
+})();
+</script>
