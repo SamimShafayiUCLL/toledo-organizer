@@ -2,6 +2,8 @@
 
 ## 0.3.0 — 2026-10-14
 
+- Nieuw ontwerp: vakken als rustige lijst in plaats van kaarten-in-kaarten, kleuren als bolletje in plaats van gekleurde linkerrand, lijn-iconen in plaats van emoji, knop "Bewerken"/"Klaar".
+- Werkt nu ook op smalle schermen zonder horizontaal scrollen.
 - Zoekveld verliest geen focus meer bij typen.
 - Tekstcursor (caret) is weer zichtbaar in invoervelden.
 - Organizer verdwijnt niet meer na terug-navigeren binnen Toledo (SPA-navigatie).

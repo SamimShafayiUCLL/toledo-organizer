@@ -41,6 +41,50 @@
     return node;
   }
 
+  // Stroke icons (24px grid). Constant markup only; never interpolate page data into these.
+  const ICONS = {
+    chevron: '<path d="m6 9 6 6 6-6"/>',
+    pencil: '<path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16v4Z"/><path d="m13.5 6.5 4 4"/>',
+    settings:
+      '<path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/>',
+    up: '<path d="M12 19V5M6 11l6-6 6 6"/>',
+    down: '<path d="M12 5v14M18 13l-6 6-6-6"/>',
+    eye: '<path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z"/><circle cx="12" cy="12" r="2.8"/>',
+    eyeOff:
+      '<path d="M3 3l18 18M10.6 5.6A9 9 0 0 1 12 5.5c6 0 9.5 6.5 9.5 6.5a16 16 0 0 1-2.9 3.7M6.4 6.9C3.9 8.6 2.5 12 2.5 12S6 18.5 12 18.5a8.8 8.8 0 0 0 4.3-1.1M9.9 9.9a3 3 0 0 0 4.2 4.2"/>',
+    close: '<path d="M6 6l12 12M18 6 6 18"/>',
+    trash: '<path d="M4 7h16M10 11v6M14 11v6M9 7V4.5h6V7M6 7l1 13h10l1-13"/>',
+    plus: '<path d="M12 5v14M5 12h14"/>',
+    reset: '<path d="M4 12a8 8 0 1 0 2.4-5.7L4 8.5"/><path d="M4 4v4.5h4.5"/>',
+    star: '<path d="m12 3.5 2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9Z"/>',
+    alert: '<path d="M12 9v4M12 16.5v.01"/><path d="M10.3 4.2 2.6 17.5A2 2 0 0 0 4.3 20.5h15.4a2 2 0 0 0 1.7-3L13.7 4.2a2 2 0 0 0-3.4 0Z"/>',
+    grip:
+      '<circle cx="9" cy="6" r="1.2"/><circle cx="15" cy="6" r="1.2"/><circle cx="9" cy="12" r="1.2"/><circle cx="15" cy="12" r="1.2"/><circle cx="9" cy="18" r="1.2"/><circle cx="15" cy="18" r="1.2"/>',
+    open: '<path d="M8 16 16 8M9 8h7v7"/>'
+  };
+
+  function icon(name, className = "") {
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.setAttribute("viewBox", "0 0 24 24");
+    svg.setAttribute("aria-hidden", "true");
+    svg.setAttribute("class", `to-icon ${className}`.trim());
+    svg.innerHTML = ICONS[name] || "";
+    return svg;
+  }
+
+  function iconButton(name, action, title, className = "", label = "") {
+    const node = el("button", {
+      class: `to-btn ${label ? "with-icon" : "icon"} ${className}`.trim(),
+      type: "button",
+      "data-action": action,
+      title,
+      "aria-label": title
+    });
+    node.append(icon(name));
+    if (label) node.append(el("span", { text: label }));
+    return node;
+  }
+
   function validColor(value) {
     return /^#[0-9a-f]{6}$/i.test(value || "");
   }
@@ -212,14 +256,15 @@
         button("Originele Toledo", "view-original", "Toon de ongewijzigde Toledo-lijst", this.state.viewMode === "original" ? "active" : "")
       ]);
 
-      const editButton = button(
-        "✎",
+      const editButton = iconButton(
+        "pencil",
         "toggle-edit-mode",
         this.state.editMode ? "Bewerkmodus sluiten" : "Bewerk groepen, kleuren en volgorde",
-        `icon${this.state.editMode ? " active" : ""}`
+        this.state.editMode ? "active" : "",
+        this.state.editMode ? "Klaar" : "Bewerken"
       );
 
-      header.append(brand, viewSwitch, editButton, button("⚙", "settings", "Instellingen", "icon"));
+      header.append(brand, viewSwitch, editButton, iconButton("settings", "settings", "Instellingen", "ghost"));
       this.root.append(header);
 
       if (this.state.viewMode === "original") {
@@ -258,7 +303,7 @@
           el("span", { text: "Verborgen tonen" })
         ])
       );
-      if (this.state.editMode) controls.append(button("+ Groep", "add-root-group", "Maak een hoofdgroep"));
+      if (this.state.editMode) controls.append(iconButton("plus", "add-root-group", "Maak een hoofdgroep", "", "Nieuwe groep"));
 
       const hiddenInput = controls.querySelector('[data-role="show-hidden"]');
       hiddenInput.checked = Boolean(this.state.showHidden);
@@ -268,7 +313,7 @@
         this.root.append(
           el("div", { class: "to-edit-hint" }, [
             el("strong", { text: "Bewerkmodus" }),
-            document.createTextNode(" · versleep vakken, pas kleuren aan en beheer groepen. Klik opnieuw op ✎ om de knoppen te verbergen.")
+            document.createTextNode(" Sleep vakken en groepen, klik op een bolletje om een kleur te kiezen. Klik op Klaar als je klaar bent.")
           ])
         );
       }
@@ -355,8 +400,9 @@
       unassignedSection.append(
         el("div", { class: "to-group-header" }, [
           el("div", { class: "to-group-title-wrap" }, [
-            el("span", { class: "to-group-title", text: `Niet ingedeeld (${unassigned.length})` }),
-            el("span", { class: "to-pill", text: "Nieuwe vakken komen hier" })
+            el("span", { class: "to-group-title", text: "Niet ingedeeld" }),
+            el("span", { class: "to-count", text: String(unassigned.length) }),
+            el("span", { class: "to-group-hint", text: "Nieuwe vakken komen hier" })
           ])
         ])
       );
@@ -374,43 +420,40 @@
       const descendantCourseCount = this.countDescendantCourses(group.id, groupsMap, byGroup);
       const hasColor = validColor(group.color);
       const section = el("section", {
-        class: `to-group depth-${depth}${group.collapsed ? " collapsed" : ""}${hasColor ? " has-color" : ""}`,
+        class: `to-group depth-${depth}${group.collapsed ? " collapsed" : ""}`,
         "data-group-id": group.id,
-        "data-drop-type": this.state.editMode ? "course-group" : null,
-        style: colorStyle(group.color)
+        "data-drop-type": this.state.editMode ? "course-group" : null
       });
 
-      const titleChildren = [
-        button(group.collapsed ? "▸" : "▾", "toggle-group", group.collapsed ? "Uitklappen" : "Inklappen", "icon tiny")
-      ];
+      const titleChildren = [];
       if (this.state.editMode) {
-        titleChildren.push(
-          el("span", {
-            class: "to-group-drag",
-            draggable: true,
-            "data-drag-type": "group",
-            "data-group-id": group.id,
-            title: "Sleep groep",
-            text: "⋮⋮"
-          })
-        );
+        const grip = el("span", {
+          class: "to-group-drag",
+          draggable: true,
+          "data-drag-type": "group",
+          "data-group-id": group.id,
+          title: "Sleep groep"
+        });
+        grip.append(icon("grip", "fill"));
+        titleChildren.push(grip);
       }
       titleChildren.push(
-        el("span", { class: "to-group-title", text: group.name }),
+        iconButton("chevron", "toggle-group", group.collapsed ? "Uitklappen" : "Inklappen", "ghost tiny to-chevron"),
+        this.swatch("group-color", group.color, "Kleur van groep"),
+        el("span", { class: "to-group-title", "data-action": "toggle-group", text: group.name }),
         el("span", { class: "to-count", text: String(groupCourses.length + descendantCourseCount) })
       );
 
       const actions = el("div", { class: "to-group-actions" });
       if (this.state.editMode) {
-        if (depth < 3) actions.append(button("+ subgroep", "add-subgroup", "Voeg een subgroep toe", "small"));
+        if (depth < 3) actions.append(iconButton("plus", "add-subgroup", "Voeg een subgroep toe", "ghost small", "Subgroep"));
         actions.append(
           ...[
-            button("↑", "group-up", "Verplaats omhoog", "icon tiny"),
-            button("↓", "group-down", "Verplaats omlaag", "icon tiny"),
-            button("✎", "rename-group", "Hernoem groep", "icon tiny"),
-            this.colorPicker("group-color", group.color, "Kleur van groep"),
-            hasColor ? button("↺", "clear-group-color", "Verwijder groepskleur", "icon tiny") : null,
-            button("×", "delete-group", "Verwijder groep", "icon tiny danger")
+            iconButton("up", "group-up", "Verplaats omhoog", "ghost tiny"),
+            iconButton("down", "group-down", "Verplaats omlaag", "ghost tiny"),
+            iconButton("pencil", "rename-group", "Hernoem groep", "ghost tiny"),
+            hasColor ? iconButton("reset", "clear-group-color", "Verwijder groepskleur", "ghost tiny") : null,
+            iconButton("trash", "delete-group", "Verwijder groep", "ghost tiny danger")
           ].filter(Boolean)
         );
       }
@@ -422,7 +465,7 @@
           "data-drop-type": this.state.editMode ? "group-target" : null,
           "data-group-id": group.id
         },
-        [el("div", { class: "to-group-title-wrap" }, titleChildren), actions]
+        [el("div", { class: "to-group-title-wrap" }, titleChildren.filter(Boolean)), actions]
       );
       section.append(header);
 
@@ -455,13 +498,19 @@
       return count;
     }
 
-    colorPicker(role, value, title) {
+    // Colour marker: a plain dot when browsing, a clickable colour input in edit mode.
+    swatch(role, value, title) {
+      const hasColor = validColor(value);
+      if (!this.state.editMode) {
+        // An empty slot keeps titles aligned whether or not a colour is set.
+        return el("span", { class: `to-dot${hasColor ? "" : " is-none"}`, style: colorStyle(value), "aria-hidden": "true" });
+      }
       return el("input", {
-        class: "to-color-picker",
+        class: `to-color-picker${hasColor ? "" : " is-empty"}`,
         type: "color",
-        value: validColor(value) ? value : "#244b8f",
+        value: hasColor ? value : "#244b8f",
         "data-role": role,
-        title
+        title: hasColor ? title : `${title} kiezen`
       });
     }
 
@@ -472,11 +521,10 @@
       const expanded = this.expandedCourses.has(course.key);
       const hasColor = validColor(setting.color);
       const card = el("article", {
-        class: `to-course${setting.hidden ? " is-hidden" : ""}${hasColor ? " has-color" : ""}`,
+        class: `to-course${setting.hidden ? " is-hidden" : ""}${expanded ? " is-expanded" : ""}`,
         "data-course-key": course.key,
         "data-group-id": groupId || "",
-        "data-drop-type": this.state.editMode && this.state.organizerMode === "structure" ? "course-order" : null,
-        style: colorStyle(setting.color)
+        "data-drop-type": this.state.editMode && this.state.organizerMode === "structure" ? "course-order" : null
       });
 
       const metaBits = [institutionLabel(course)];
@@ -499,13 +547,17 @@
       ];
 
       if (newestVersion && !newestVersion.available) {
-        mainChildren.push(
-          el("div", {
-            class: "to-course-status warning",
-            text: `⚠ ${this.versionLabel(course, newestVersion)} is niet beschikbaar op Toledo (${institutionLabel(newestVersion)}).`,
-            title: "Toledo markeert deze cursusversie momenteel als niet beschikbaar."
+        const status = el("div", {
+          class: "to-course-status warning",
+          title: "Toledo markeert deze cursusversie momenteel als niet beschikbaar."
+        });
+        status.append(
+          icon("alert"),
+          el("span", {
+            text: `${this.versionLabel(course, newestVersion)} is niet beschikbaar op Toledo (${institutionLabel(newestVersion)}).`
           })
         );
+        mainChildren.push(status);
       }
 
       const actions = el("div", { class: "to-course-actions" });
@@ -518,40 +570,48 @@
           })
         );
       }
-      actions.append(button(expanded ? "▴" : "▾", "toggle-course", "Toon academiejaren", "icon"));
-
       if (this.state.editMode) {
         if (this.state.organizerMode === "structure" && this.state.courseSort === "custom") {
           actions.append(
-            button("↑", "course-up", "Vak omhoog", "icon tiny"),
-            button("↓", "course-down", "Vak omlaag", "icon tiny")
+            iconButton("up", "course-up", "Vak omhoog", "ghost tiny"),
+            iconButton("down", "course-down", "Vak omlaag", "ghost tiny")
           );
         }
         actions.append(
           ...[
-            button("✎", "rename-course", "Geef het vak een eigen naam", "icon tiny"),
-            this.colorPicker("course-color", setting.color, "Kleur van vak"),
-            hasColor ? button("↺", "clear-course-color", "Verwijder vakkleur", "icon tiny") : null,
-            button(setting.hidden ? "👁" : "⊘", "toggle-hidden", setting.hidden ? "Maak opnieuw zichtbaar" : "Verberg vak", "icon")
+            iconButton("pencil", "rename-course", "Geef het vak een eigen naam", "ghost tiny"),
+            hasColor ? iconButton("reset", "clear-course-color", "Verwijder vakkleur", "ghost tiny") : null,
+            iconButton(
+              setting.hidden ? "eye" : "eyeOff",
+              "toggle-hidden",
+              setting.hidden ? "Maak opnieuw zichtbaar" : "Verberg vak",
+              "ghost tiny"
+            )
           ].filter(Boolean)
         );
       }
+      actions.append(
+        iconButton("chevron", "toggle-course", expanded ? "Verberg academiejaren" : "Toon academiejaren", "ghost tiny to-chevron")
+      );
 
       const headChildren = [];
       if (this.state.editMode) {
-        headChildren.push(
-          el("span", {
-            class: "to-drag-handle",
-            draggable: true,
-            "data-drag-type": "course",
-            "data-course-key": course.key,
-            title: "Sleep vak",
-            text: "⋮⋮"
-          })
-        );
+        const grip = el("span", {
+          class: "to-drag-handle",
+          draggable: true,
+          "data-drag-type": "course",
+          "data-course-key": course.key,
+          title: "Sleep vak"
+        });
+        grip.append(icon("grip", "fill"));
+        headChildren.push(grip);
       }
-      headChildren.push(el("div", { class: "to-course-main" }, mainChildren), actions);
-      card.append(el("div", { class: "to-course-head" }, headChildren));
+      headChildren.push(
+        this.swatch("course-color", setting.color, "Kleur van vak"),
+        el("div", { class: "to-course-main" }, mainChildren),
+        actions
+      );
+      card.append(el("div", { class: "to-course-head" }, headChildren.filter(Boolean)));
 
       if (expanded) {
         const versions = el("div", { class: "to-versions" });
@@ -569,9 +629,18 @@
       const row = el("div", { class: `to-version${version.available ? "" : " unavailable"}` });
 
       if (this.state.editMode) {
-        row.append(button(isDefault ? "★" : "☆", "set-default-version", isDefault ? "Standaardversie" : "Maak standaardversie", "icon star"));
-      } else if (isDefault) {
-        row.append(el("span", { class: "to-default-star", text: "★", title: "Standaardversie" }));
+        row.append(
+          iconButton(
+            "star",
+            "set-default-version",
+            isDefault ? "Standaardversie" : "Maak standaardversie",
+            `ghost tiny to-star${isDefault ? " is-default" : ""}`
+          )
+        );
+      } else {
+        const slot = el("span", { class: "to-default-star", title: isDefault ? "Standaardversie" : null });
+        if (isDefault) slot.append(icon("star", "fill"));
+        row.append(slot);
       }
 
       const versionMeta = version.available
@@ -585,10 +654,10 @@
         ])
       );
 
-      if (this.state.editMode) row.append(button("✎", "rename-version", "Geef deze versie een eigen naam", "icon"));
+      if (this.state.editMode) row.append(iconButton("pencil", "rename-version", "Geef deze versie een eigen naam", "ghost tiny"));
       row.append(
         version.available
-          ? button("Open", "open-version", `Open ${label}`, "primary small")
+          ? iconButton("open", "open-version", `Open ${label}`, "small", "Openen")
           : el("span", { class: "to-disabled-label", text: "Niet beschikbaar" })
       );
 
@@ -607,7 +676,7 @@
             el("h2", { text: "Instellingen" }),
             el("p", { class: "to-muted", text: "Alles wordt lokaal in Edge bewaard. Toledo-login en cookies worden niet geëxporteerd." })
           ]),
-          button("×", "close-settings", "Sluiten", "icon")
+          iconButton("close", "close-settings", "Sluiten", "ghost")
         ]),
         el("div", { class: "to-settings-grid" }, [
           this.settingsCard("Back-up", "Bewaar of herstel je groepen, kleuren, volgorde en standaardversies.", [

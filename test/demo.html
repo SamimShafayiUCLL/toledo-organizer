@@ -74,5 +74,6 @@ window.chrome = {
   });
   ui.expandedCourses.add("KUL:E0I31a");
   ui.mount(document.getElementById("mount"));
+  if (params.get("settings") === "1") await ui.updateUIState({ settingsOpen: true });
 })();
 </script>
