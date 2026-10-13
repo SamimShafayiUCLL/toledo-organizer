@@ -136,6 +136,9 @@
       this.workspace = null;
       this.toastTimer = null;
       this.dragData = null;
+      this.dropTarget = null;
+      this.expandTimer = null;
+      this.flashKey = null;
       this.searchTimer = null;
       this.documentListenerBound = false;
       this.documentKeyHandler = (event) => {
@@ -169,11 +172,12 @@
       this.root.addEventListener("change", (event) => this.handleChange(event));
       this.root.addEventListener("dragstart", (event) => this.handleDragStart(event));
       this.root.addEventListener("dragover", (event) => this.handleDragOver(event));
-      this.root.addEventListener("dragleave", (event) => this.handleDragLeave(event));
+      this.root.addEventListener("dragleave", (event) => {
+        if (!this.root.contains(event.relatedTarget)) this.setDropTarget(null);
+      });
       this.root.addEventListener("drop", (event) => this.handleDrop(event));
       this.root.addEventListener("dragend", () => {
-        this.dragData = null;
-        this.clearDragStyles();
+        this.endDrag();
       });
     }
 
@@ -526,6 +530,11 @@
         "data-group-id": groupId || "",
         "data-drop-type": this.state.editMode && this.state.organizerMode === "structure" ? "course-order" : null
       });
+      if (this.state.editMode && this.state.organizerMode === "structure") {
+        card.draggable = true;
+        card.dataset.dragType = "course";
+      }
+      if (this.flashKey === course.key) card.classList.add("just-moved");
 
       const metaBits = [institutionLabel(course)];
       if (course.semester) metaBits.push(`Semester ${course.semester}`);
@@ -596,13 +605,7 @@
 
       const headChildren = [];
       if (this.state.editMode) {
-        const grip = el("span", {
-          class: "to-drag-handle",
-          draggable: true,
-          "data-drag-type": "course",
-          "data-course-key": course.key,
-          title: "Sleep vak"
-        });
+        const grip = el("span", { class: "to-drag-handle", title: "Sleep om te verplaatsen", "aria-hidden": "true" });
         grip.append(icon("grip", "fill"));
         headChildren.push(grip);
       }
@@ -799,10 +802,10 @@
 
     handleDragStart(event) {
       if (!this.state.editMode) return;
-      const dragEl = event.target.closest('[draggable="true"]');
-      if (!dragEl) return;
+      const dragEl = event.target.closest?.('[draggable="true"]');
+      if (!dragEl || !this.root.contains(dragEl)) return;
       if (dragEl.dataset.dragType === "course") {
-        this.dragData = { type: "course", key: dragEl.dataset.courseKey };
+        this.dragData = { type: "course", key: dragEl.dataset.courseKey, fromGroup: dragEl.dataset.groupId || null };
       } else if (dragEl.dataset.dragType === "group") {
         this.dragData = { type: "group", id: dragEl.dataset.groupId };
       } else {
@@ -810,59 +813,138 @@
       }
       event.dataTransfer.effectAllowed = "move";
       event.dataTransfer.setData("text/plain", JSON.stringify(this.dragData));
-      requestAnimationFrame(() => dragEl.classList.add("dragging"));
+      const source = this.dragData.type === "group" ? dragEl.closest(".to-group") : dragEl;
+      requestAnimationFrame(() => {
+        source?.classList.add("dragging");
+        this.root.classList.add("is-dragging");
+      });
+    }
+
+    // Works out what a drop at the pointer would do: insert before/after a course, or move into a group.
+    resolveDrop(event) {
+      const zone = event.target.closest?.("[data-drop-type]");
+      if (!zone || !this.root.contains(zone)) return null;
+      const type = zone.dataset.dropType;
+      const drag = this.dragData;
+
+      if (drag.type === "course") {
+        if (type === "course-order") {
+          if (zone.dataset.courseKey === drag.key) return null;
+          if (this.state.courseSort !== "custom") {
+            // Alphabetical view: order is automatic, so a course row just means "this group".
+            return this.groupDrop(zone.closest('[data-drop-type="course-group"]'));
+          }
+          // Measure against the title row so an expanded course (with its versions below) still splits sensibly.
+          const rect = (zone.querySelector(".to-course-head") || zone).getBoundingClientRect();
+          const position = event.clientY < rect.top + rect.height / 2 ? "before" : "after";
+          return {
+            el: zone,
+            cls: `drop-${position}`,
+            kind: "order",
+            position,
+            targetKey: zone.dataset.courseKey,
+            groupId: zone.dataset.groupId || null
+          };
+        }
+        if (type === "group-target") return this.groupDrop(zone.closest(".to-group"));
+        if (type === "course-group") return this.groupDrop(zone);
+        return null;
+      }
+
+      if (drag.type === "group") {
+        if (type === "root-groups") return { el: zone, cls: "drop-into", kind: "group-root" };
+        const section = type === "group-target" ? zone.closest(".to-group") : null;
+        const groupId = section?.dataset.groupId;
+        if (!groupId || groupId === drag.id) return null;
+        return { el: section, cls: "drop-into", kind: "group-into", groupId };
+      }
+      return null;
+    }
+
+    groupDrop(section) {
+      if (!section) return null;
+      return { el: section, cls: "drop-into", kind: "into", groupId: section.dataset.groupId || null };
+    }
+
+    setDropTarget(target) {
+      const prev = this.dropTarget;
+      if (prev && target && prev.el === target.el && prev.cls === target.cls) return;
+      prev?.el.classList.remove(prev.cls);
+      this.dropTarget = target;
+      target?.el.classList.add(target.cls);
     }
 
     handleDragOver(event) {
       if (!this.dragData || !this.state.editMode) return;
-      const zone = event.target.closest("[data-drop-type]");
-      if (!zone) return;
-      const type = zone.dataset.dropType;
-      if (this.dragData.type === "course" && ["course-group", "group-target", "course-order"].includes(type)) {
-        event.preventDefault();
-        zone.classList.add("drop-active");
-      }
-      if (this.dragData.type === "group" && ["group-target", "root-groups"].includes(type)) {
-        event.preventDefault();
-        zone.classList.add("drop-active");
-      }
+      this.autoScroll(event.clientY);
+      const target = this.resolveDrop(event);
+      this.setDropTarget(target);
+      if (!target) return;
+      event.preventDefault();
+      event.dataTransfer.dropEffect = "move";
+      this.scheduleAutoExpand(target);
     }
 
-    handleDragLeave(event) {
-      const zone = event.target.closest("[data-drop-type]");
-      zone?.classList.remove("drop-active");
+    autoScroll(clientY) {
+      const edge = 70;
+      if (clientY < edge) window.scrollBy(0, -Math.ceil((edge - clientY) / 4));
+      else if (clientY > window.innerHeight - edge) window.scrollBy(0, Math.ceil((clientY - (window.innerHeight - edge)) / 4));
+    }
+
+    // Hovering a collapsed group opens it (visually only, until the drop) so you can drop between its courses.
+    scheduleAutoExpand(target) {
+      const section = target.kind === "into" || target.kind === "group-into" ? target.el : null;
+      const collapsed = section?.classList.contains("collapsed") ? section : null;
+      if (this.expandTimer?.section === collapsed) return;
+      clearTimeout(this.expandTimer?.id);
+      this.expandTimer = null;
+      if (!collapsed) return;
+      const id = setTimeout(() => {
+        collapsed.classList.remove("collapsed");
+        collapsed.dataset.autoExpanded = "1";
+      }, 650);
+      this.expandTimer = { id, section: collapsed };
     }
 
     async handleDrop(event) {
-      const zone = event.target.closest("[data-drop-type]");
-      if (!zone || !this.dragData || !this.state.editMode) return;
+      if (!this.dragData || !this.state.editMode) return;
+      const target = this.resolveDrop(event) || this.dropTarget;
+      if (!target) return this.endDrag();
       event.preventDefault();
-      zone.classList.remove("drop-active");
+      const drag = this.dragData;
+      const expandedIds = [...this.root.querySelectorAll('[data-auto-expanded="1"]')].map((node) => node.dataset.groupId);
+      this.endDrag();
 
-      if (this.dragData.type === "course") {
-        if (zone.dataset.dropType === "course-order") {
-          const targetKey = zone.dataset.courseKey;
-          const targetGroupId = zone.dataset.groupId || null;
-          if (targetKey && targetKey !== this.dragData.key) {
-            await this.reorderCourseBefore(this.dragData.key, targetKey, targetGroupId);
-          }
-        } else if (zone.dataset.dropType === "course-group" || zone.dataset.dropType === "group-target") {
-          await this.moveCourse(this.dragData.key, zone.dataset.groupId || null);
+      if (drag.type === "course") {
+        if (target.kind === "order") {
+          await this.placeCourse(drag.key, target.groupId, target.targetKey, target.position, expandedIds);
+        } else if (target.kind === "into") {
+          await this.placeCourse(drag.key, target.groupId, null, "end", expandedIds);
         }
-      } else if (this.dragData.type === "group") {
-        if (zone.dataset.dropType === "root-groups") {
-          await this.moveGroup(this.dragData.id, null);
-        } else if (zone.dataset.dropType === "group-target") {
-          await this.moveGroup(this.dragData.id, zone.dataset.groupId || null);
-        }
+      } else if (drag.type === "group") {
+        if (target.kind === "group-root") await this.moveGroup(drag.id, null);
+        else if (target.kind === "group-into") await this.moveGroup(drag.id, target.groupId);
       }
+    }
 
+    endDrag() {
+      clearTimeout(this.expandTimer?.id);
+      this.expandTimer = null;
+      this.setDropTarget(null);
       this.dragData = null;
       this.clearDragStyles();
     }
 
     clearDragStyles() {
-      this.root?.querySelectorAll(".dragging,.drop-active").forEach((node) => node.classList.remove("dragging", "drop-active"));
+      this.root?.classList.remove("is-dragging");
+      this.root
+        ?.querySelectorAll(".dragging,.drop-into,.drop-before,.drop-after")
+        .forEach((node) => node.classList.remove("dragging", "drop-into", "drop-before", "drop-after"));
+      // Groups opened only for the drag close again unless something was dropped into them.
+      this.root?.querySelectorAll('[data-auto-expanded="1"]').forEach((node) => {
+        node.classList.add("collapsed");
+        delete node.dataset.autoExpanded;
+      });
     }
 
     async updateUIState(patch) {
@@ -1054,28 +1136,6 @@
       if (version?.available && version.href) this.navigateTo(version.href, event);
     }
 
-    nextOrderForGroup(groupId, excludingKey = null) {
-      const orders = this.getCourses()
-        .filter((course) => course.key !== excludingKey && (this.courseSetting(course.key).groupId || null) === (groupId || null))
-        .map((course) => this.courseSetting(course.key).order)
-        .filter(Number.isFinite);
-      return orders.length ? Math.max(...orders) + 1 : 0;
-    }
-
-    async moveCourse(courseKey, groupId) {
-      const setting = this.courseSetting(courseKey);
-      const target = groupId || null;
-      const courseSettings = {
-        ...this.state.courseSettings,
-        [courseKey]: {
-          ...setting,
-          groupId: target,
-          order: this.nextOrderForGroup(target, courseKey)
-        }
-      };
-      await this.patchState({ courseSettings });
-    }
-
     async reorderCourse(courseKey, delta) {
       const setting = this.courseSetting(courseKey);
       const groupId = setting.groupId || null;
@@ -1085,37 +1145,50 @@
       const index = siblings.findIndex((course) => course.key === courseKey);
       const target = siblings[index + delta];
       if (!target) return;
-      const targetSetting = this.courseSetting(target.key);
-      const courseSettings = {
-        ...this.state.courseSettings,
-        [courseKey]: { ...setting, order: targetSetting.order },
-        [target.key]: { ...targetSetting, order: setting.order }
-      };
-      await this.patchState({ courseSettings });
+      // Renumbers the whole group, so duplicate order values can't make the swap a no-op.
+      await this.placeCourse(courseKey, groupId, target.key, delta < 0 ? "before" : "after");
     }
 
-    async reorderCourseBefore(sourceKey, targetKey, targetGroupId) {
+    // Moves a course into groupId, before/after targetKey or at the end, and renumbers that group.
+    async placeCourse(sourceKey, targetGroupId, targetKey, position, expandGroupIds = []) {
       const source = this.findCourse(sourceKey);
-      const target = this.findCourse(targetKey);
-      if (!source || !target) return;
+      if (!source) return;
       const groupId = targetGroupId || null;
+      const fromGroupId = this.courseSetting(sourceKey).groupId || null;
       const siblings = this.sortCourses(
         this.getCourses().filter(
           (course) => course.key !== sourceKey && (this.courseSetting(course.key).groupId || null) === groupId
         )
       );
-      const targetIndex = Math.max(0, siblings.findIndex((course) => course.key === targetKey));
-      siblings.splice(targetIndex, 0, source);
+      let index = siblings.length;
+      if (targetKey) {
+        const targetIndex = siblings.findIndex((course) => course.key === targetKey);
+        if (targetIndex >= 0) index = position === "after" ? targetIndex + 1 : targetIndex;
+      }
+      siblings.splice(index, 0, source);
 
       const courseSettings = { ...this.state.courseSettings };
-      siblings.forEach((course, index) => {
-        courseSettings[course.key] = {
-          ...this.courseSetting(course.key),
-          groupId,
-          order: index
-        };
+      siblings.forEach((course, order) => {
+        courseSettings[course.key] = { ...this.courseSetting(course.key), groupId, order };
       });
-      await this.patchState({ courseSettings });
+      const groups = expandGroupIds.length
+        ? this.state.groups.map((g) => (expandGroupIds.includes(g.id) && g.id === groupId ? { ...g, collapsed: false } : g))
+        : this.state.groups;
+
+      this.flash(sourceKey);
+      await this.patchState({ courseSettings, groups });
+      if (fromGroupId !== groupId) {
+        const name = groupId ? this.state.groups.find((g) => g.id === groupId)?.name : "Niet ingedeeld";
+        this.toast(`${this.courseTitle(source)} verplaatst naar ${name || "groep"}.`);
+      }
+    }
+
+    flash(courseKey) {
+      this.flashKey = courseKey;
+      clearTimeout(this.flashTimer);
+      this.flashTimer = setTimeout(() => {
+        this.flashKey = null;
+      }, 1200);
     }
 
     async moveGroup(groupId, targetParentId) {
