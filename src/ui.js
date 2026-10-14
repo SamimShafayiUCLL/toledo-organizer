@@ -60,7 +60,15 @@
     alert: '<path d="M12 9v4M12 16.5v.01"/><path d="M10.3 4.2 2.6 17.5A2 2 0 0 0 4.3 20.5h15.4a2 2 0 0 0 1.7-3L13.7 4.2a2 2 0 0 0-3.4 0Z"/>',
     grip:
       '<circle cx="9" cy="6" r="1.2"/><circle cx="15" cy="6" r="1.2"/><circle cx="9" cy="12" r="1.2"/><circle cx="15" cy="12" r="1.2"/><circle cx="9" cy="18" r="1.2"/><circle cx="15" cy="18" r="1.2"/>',
-    open: '<path d="M8 16 16 8M9 8h7v7"/>'
+    open: '<path d="M8 16 16 8M9 8h7v7"/>',
+    wand: '<path d="M4 20 15 9"/><path d="m13 7 4 4"/><path d="M18 3v3M16.5 4.5h3M20 12v2M19 13h2"/>',
+    file: '<path d="M7 3.5h7l4 4V20.5H7Z"/><path d="M14 3.5v4h4M9.5 13h5M9.5 16.5h5"/>',
+    megaphone: '<path d="M4 10v4h3l7 4V6L7 10Z"/><path d="M17.5 9.5a4 4 0 0 1 0 5"/>',
+    clock: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>',
+    checkSquare: '<rect x="4" y="4" width="16" height="16" rx="3"/><path d="m8.5 12.5 2.5 2.5 4.5-5"/>',
+    award: '<circle cx="12" cy="9" r="5.5"/><path d="m8.8 13.8-1.3 6.7L12 18.5l4.5 2-1.3-6.7"/>',
+    book: '<path d="M5 4.5h9a3 3 0 0 1 3 3v12H8a3 3 0 0 1-3-3Z"/><path d="M5 16.5a3 3 0 0 1 3-3h9"/>',
+    sparkle: '<path d="M12 3.5 13.8 10 20.5 12 13.8 14 12 20.5 10.2 14 3.5 12 10.2 10Z"/>'
   };
 
   function icon(name, className = "") {
@@ -101,6 +109,98 @@
     return institution || "Toledo";
   }
 
+  // ---- smart sorting ----
+  const AUTOSORT_STRATEGIES = [
+    ["institution-semester", "Instelling › Semester", "KU Leuven en UCLL apart, per semester"],
+    ["institution-program", "Instelling › Opleiding", "Per instelling, gegroepeerd op opleidingscode"],
+    ["year-institution", "Academiejaar › Instelling", "Per academiejaar, daarbinnen per instelling"],
+    ["current-archive", "Actueel en archief", "Dit academiejaar apart van ouder materiaal"]
+  ];
+
+  const isCommunity = (course) => course?.type === "community" || course?.institution === "COMMUNITY";
+
+  function currentYearCode(now = new Date()) {
+    const yy = now.getFullYear() % 100;
+    const pair = (n) => String((n + 100) % 100).padStart(2, "0");
+    return now.getMonth() >= 8 ? `${pair(yy)}${pair(yy + 1)}` : `${pair(yy - 1)}${pair(yy)}`;
+  }
+
+  const yearLabel = (code) => `20${code.slice(0, 2)}-20${code.slice(2)}`;
+
+  function newestYear(course) {
+    const years = (course.versions || []).map((v) => v.year).filter((y) => /^\d{4}$/.test(y || ""));
+    return years.length ? years.sort().pop() : null;
+  }
+
+  function institutionGroupName(course) {
+    if (course.institution === "KUL") return ["KU Leuven", 0];
+    if (course.institution === "UCLL") return ["UCLL", 1];
+    return ["Andere", 2];
+  }
+
+  function programOf(course) {
+    const code = (course.code || "").trim();
+    if (!code) return null;
+    const prefix = course.institution === "KUL" ? code.slice(0, 3) : /^[A-Za-z]+/.exec(code)?.[0] || "";
+    return prefix ? prefix.toUpperCase() : null;
+  }
+
+  function recommendStrategy(courses, now = new Date()) {
+    const real = courses.filter((c) => !isCommunity(c));
+    if (new Set(real.map((c) => institutionGroupName(c)[0])).size > 1) return "institution-semester";
+    if (new Set(real.map(newestYear).filter(Boolean)).size >= 2) return "current-archive";
+    return "institution-program";
+  }
+
+  // Pure grouping: returns { roots: [{ name, count, children: [{ name, courses }] }], overig: [courses], total }.
+  function planAutoSort(courses, state, strategy, all = false, now = new Date()) {
+    const groupIds = new Set((state?.groups || []).map((g) => g.id));
+    const settings = state?.courseSettings || {};
+    const titleOf = (c) => settings[c.key]?.customTitle || c.title || "";
+    const scope = courses.filter((c) => all || !(settings[c.key]?.groupId && groupIds.has(settings[c.key].groupId)));
+    const overig = scope.filter(isCommunity);
+    const real = scope.filter((c) => !isCommunity(c));
+    const current = currentYearCode(now);
+    const currentStart = 2000 + Number(current.slice(0, 2));
+
+    const roots = new Map();
+    const place = (rootName, rootSort, childName, childSort, course) => {
+      if (!roots.has(rootName)) roots.set(rootName, { name: rootName, sort: rootSort, children: new Map() });
+      const root = roots.get(rootName);
+      if (!root.children.has(childName)) root.children.set(childName, { name: childName, sort: childSort, courses: [] });
+      root.children.get(childName).courses.push(course);
+    };
+
+    for (const course of real) {
+      const [inst, instSort] = institutionGroupName(course);
+      const year = newestYear(course);
+      if (strategy === "institution-semester") {
+        const sem = String(course.semester ?? "");
+        const [name, sort] = sem === "1" ? ["1ste semester", 1] : sem === "2" ? ["2de semester", 2] : ["Overige vakken", 3];
+        place(inst, instSort, name, sort, course);
+      } else if (strategy === "institution-program") {
+        const program = programOf(course);
+        place(inst, instSort, program ? `Opleiding ${program}` : "Overige vakken", program ? program : "\uffff", course);
+      } else if (strategy === "year-institution") {
+        const start = year ? 2000 + Number(year.slice(0, 2)) : null;
+        if (start == null || start < currentStart - 2) place("Ouder", 1e9, inst, instSort, course);
+        else place(yearLabel(year), -start, inst, instSort, course);
+      } else if (strategy === "current-archive") {
+        if (year && year >= current) place("Dit academiejaar", 0, inst, instSort, course);
+        else place("Archief", 1, inst, instSort, course);
+      }
+    }
+
+    const cmp = (a, b) => (typeof a.sort === "number" && typeof b.sort === "number" ? a.sort - b.sort : String(a.sort).localeCompare(String(b.sort), "nl"));
+    const byTitle = (a, b) => titleOf(a).localeCompare(titleOf(b), "nl", { sensitivity: "base", numeric: true });
+    const outRoots = [...roots.values()].sort(cmp).map((root) => {
+      const children = [...root.children.values()].sort(cmp).map((child) => ({ name: child.name, courses: child.courses.sort(byTitle) }));
+      return { name: root.name, count: children.reduce((n, c) => n + c.courses.length, 0), children };
+    });
+    overig.sort(byTitle);
+    return { roots: outRoots, overig, total: real.length + overig.length };
+  }
+
   async function downloadJson(filename, data) {
     const json = typeof data === "string" ? data : JSON.stringify(data, null, 2);
     return new Promise((resolve, reject) => {
@@ -132,6 +232,7 @@
       this.getCourses = getCourses;
       this.getEnrollments = getEnrollments;
       this.expandedCourses = new Set();
+      this.autosort = { open: false, strategy: null, all: false };
       this.root = null;
       this.workspace = null;
       this.toastTimer = null;
@@ -142,9 +243,9 @@
       this.searchTimer = null;
       this.documentListenerBound = false;
       this.documentKeyHandler = (event) => {
-        if (event.key === "Escape" && this.state.ui?.settingsOpen) {
-          this.updateUIState({ settingsOpen: false });
-        }
+        if (event.key !== "Escape") return;
+        if (this.autosort.open) this.closeAutoSort();
+        else if (this.state.ui?.settingsOpen) this.updateUIState({ settingsOpen: false });
       };
     }
 
@@ -241,8 +342,17 @@
         active?.matches?.('[data-role="search"]') && this.root.contains(active)
           ? { start: active.selectionStart, end: active.selectionEnd }
           : null;
+      const modalFocus = active && this.root.contains(active) && active.closest?.(".to-autosort")
+        ? { action: active.dataset.action, value: active.dataset.value, role: active.dataset.role }
+        : null;
       this.root.innerHTML = "";
       this.renderContent();
+      if (modalFocus) {
+        const sel = modalFocus.role
+          ? `[data-role="${modalFocus.role}"]`
+          : `[data-action="${modalFocus.action}"]${modalFocus.value ? `[data-value="${modalFocus.value}"]` : ""}`;
+        this.root.querySelector(`.to-autosort ${sel}`)?.focus({ preventScroll: true });
+      }
       if (searchFocus) {
         const search = this.root.querySelector('[data-role="search"]');
         if (search) {
@@ -257,8 +367,11 @@
 
       const header = el("div", { class: "to-topbar" });
       const brand = el("div", { class: "to-brand" }, [
-        el("div", { class: "to-brand-title", text: "Toledo Organizer" }),
-        el("div", { class: "to-brand-sub", text: "Eigen structuur bovenop Toledo" })
+        el("div", { class: "to-brand-title", text: "Mijn vakken" }),
+        el("div", {
+          class: "to-brand-sub",
+          text: `${this.getCourses().length} ${this.getCourses().length === 1 ? "vak" : "vakken"} · ${this.state.groups.length} ${this.state.groups.length === 1 ? "groep" : "groepen"}`
+        })
       ]);
 
       const viewSwitch = el("div", { class: "to-segment" }, [
@@ -274,7 +387,9 @@
         this.state.editMode ? "Klaar" : "Bewerken"
       );
 
-      header.append(brand, viewSwitch, editButton, iconButton("settings", "settings", "Instellingen", "ghost"));
+      const autoSortButton =
+        this.state.viewMode === "organizer" ? iconButton("wand", "auto-sort", "Laat de organizer een indeling voorstellen", "ghost", "Slim indelen") : null;
+      header.append(...[brand, autoSortButton, viewSwitch, editButton, iconButton("settings", "settings", "Instellingen", "ghost")].filter(Boolean));
       this.root.append(header);
 
       if (this.state.viewMode === "original") {
@@ -334,6 +449,7 @@
       this.root.append(workspace);
 
       if (this.state.ui?.settingsOpen) this.root.append(this.renderSettingsModal());
+      if (this.autosort.open) this.root.append(this.renderAutoSortModal());
     }
 
     getFilteredCourses() {
@@ -407,15 +523,18 @@
         "data-drop-type": this.state.editMode ? "course-group" : null,
         "data-group-id": ""
       });
-      unassignedSection.append(
-        el("div", { class: "to-group-header" }, [
-          el("div", { class: "to-group-title-wrap" }, [
-            el("span", { class: "to-group-title", text: "Niet ingedeeld" }),
-            el("span", { class: "to-count", text: String(unassigned.length) }),
-            el("span", { class: "to-group-hint", text: "Nieuwe vakken komen hier" })
-          ])
-        ])
-      );
+      const unassignedTitle = [
+        el("span", { class: "to-group-title", text: "Niet ingedeeld" }),
+        el("span", { class: "to-count", text: String(unassigned.length) }),
+        el("span", { class: "to-group-hint", text: "Nieuwe vakken komen hier" })
+      ];
+      if (unassigned.length >= 3 && !this.state.editMode) {
+        unassignedTitle.push(
+          el("span", { class: "to-suggest", text: "Laat de organizer een indeling voorstellen" }),
+          el("button", { class: "to-btn small primary", type: "button", "data-action": "auto-sort", text: "Slim indelen" })
+        );
+      }
+      unassignedSection.append(el("div", { class: "to-group-header" }, [el("div", { class: "to-group-title-wrap" }, unassignedTitle)]));
       const unassignedList = el("div", { class: "to-course-list to-unassigned-list" });
       this.sortCourses(unassigned).forEach((course) => unassignedList.append(this.renderCourse(course, null)));
       if (!unassigned.length) unassignedList.append(el("div", { class: "to-empty", text: "Alles is ingedeeld." }));
@@ -779,8 +898,147 @@
       return [
         box("dash-tasks", "Taken tonen", dash.showTasks !== false),
         box("dash-upcoming", "Binnenkort tonen", dash.showUpcoming !== false),
+        box("dash-hero", "Begroeting en overzicht bovenaan", dash.showHero !== false),
+        box("dash-feed", "Eigen updates-overzicht i.p.v. dat van Toledo", dash.replaceFeed !== false),
         box("dash-hide-info", "Informatiepaneel van Toledo verbergen", dash.hideInfoPanel)
       ];
+    }
+
+    autosortScope() {
+      return this.getCourses();
+    }
+
+    openAutoSort() {
+      this.autosort = { open: true, strategy: recommendStrategy(this.autosortScope()), all: false };
+      this.render();
+      setTimeout(() => this.root?.querySelector(".to-strategy.active")?.focus({ preventScroll: true }), 0);
+    }
+
+    closeAutoSort() {
+      this.autosort = { open: false, strategy: null, all: false };
+      this.render();
+    }
+
+    renderAutoSortModal() {
+      const courses = this.autosortScope();
+      const recommended = recommendStrategy(courses);
+      const plan = planAutoSort(courses, this.state, this.autosort.strategy, this.autosort.all);
+      const overlay = el("div", { class: "to-modal-overlay", "data-action": "close-autosort-overlay" });
+      const modal = el("div", { class: "to-modal to-autosort", role: "dialog", "aria-modal": "true", "aria-label": "Slim indelen" });
+
+      const strategies = el(
+        "div",
+        { class: "to-strategy-list", role: "radiogroup" },
+        AUTOSORT_STRATEGIES.map(([id, title, desc]) => {
+          const active = this.autosort.strategy === id;
+          const children = [el("span", { class: "to-strategy-title", text: title }), el("span", { class: "to-strategy-desc", text: desc })];
+          if (id === recommended) children.push(el("span", { class: "to-pill", text: "Aanbevolen" }));
+          return el(
+            "button",
+            {
+              class: `to-strategy${active ? " active" : ""}`,
+              type: "button",
+              "data-action": "autosort-strategy",
+              "data-value": id,
+              role: "radio",
+              "aria-checked": active ? "true" : "false"
+            },
+            children
+          );
+        })
+      );
+
+      const allInput = el("input", { type: "checkbox", "data-role": "autosort-all" });
+      allInput.checked = Boolean(this.autosort.all);
+
+      const sample = (list) => list.slice(0, 3).map((c) => this.courseTitle(c)).join(", ") + (list.length > 3 ? ", …" : "");
+      const tree = el("ul", { class: "to-preview-tree" });
+      const row = (depth, name, count, list) => {
+        const kids = [el("span", { class: "to-preview-name", text: name }), el("span", { class: "to-count", text: String(count) })];
+        if (list) kids.push(el("span", { class: "to-preview-sample", text: sample(list) }));
+        tree.append(el("li", { class: "to-preview-group", "data-depth": String(depth) }, kids));
+      };
+      for (const root of plan.roots) {
+        row(1, root.name, root.count, null);
+        for (const child of root.children) row(2, child.name, child.courses.length, child.courses);
+      }
+      if (plan.overig.length) row(1, "Overig", plan.overig.length, plan.overig);
+
+      const preview = el("div", { class: "to-autosort-preview" }, [el("h3", { class: "to-preview-title", text: "Voorbeeld" })]);
+      if (plan.total) preview.append(tree);
+      else preview.append(el("div", { class: "to-dash-empty", text: "Er zijn geen vakken om in te delen." }));
+
+      const apply = el("button", {
+        class: "to-btn primary",
+        type: "button",
+        "data-action": "autosort-apply",
+        text: `${plan.total} ${plan.total === 1 ? "vak" : "vakken"} indelen`
+      });
+      apply.disabled = plan.total === 0;
+
+      modal.append(
+        el("div", { class: "to-modal-head" }, [
+          el("div", {}, [
+            el("h2", { text: "Slim indelen" }),
+            el("p", { class: "to-muted", text: "Kies hoe je vakken automatisch in groepen komen. Je kunt daarna alles nog aanpassen." })
+          ]),
+          iconButton("close", "close-autosort", "Sluiten", "ghost")
+        ]),
+        strategies,
+        el("label", { class: "to-checkbox" }, [allInput, el("span", { text: "Ook vakken herschikken die al in een groep zitten" })]),
+        preview,
+        el("div", { class: "to-modal-actions" }, [button("Annuleren", "close-autosort"), apply])
+      );
+      overlay.append(modal);
+      return overlay;
+    }
+
+    async applyAutoSort() {
+      const plan = planAutoSort(this.autosortScope(), this.state, this.autosort.strategy, this.autosort.all);
+      if (!plan.total) return;
+      const groups = this.state.groups.map((g) => ({ ...g }));
+      const courseSettings = { ...this.state.courseSettings };
+      const used = new Set();
+      const ensureGroup = (name, parentId) => {
+        const wanted = name.trim().toLowerCase();
+        const found = groups.find((g) => !g.builtIn && (g.parentId || null) === parentId && g.name.trim().toLowerCase() === wanted);
+        if (found) return found;
+        const siblings = groups.filter((g) => (g.parentId || null) === parentId);
+        const group = {
+          id: `group-${crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2)}`,
+          name,
+          parentId,
+          order: siblings.length ? Math.max(...siblings.map((g) => g.order ?? 0)) + 1 : 0,
+          collapsed: false,
+          color: null
+        };
+        groups.push(group);
+        return group;
+      };
+      const movingKeys = new Set([...plan.roots.flatMap((r) => r.children.flatMap((c) => c.courses)), ...plan.overig].map((c) => c.key));
+      const assign = (groupId, list) => {
+        let order =
+          1 +
+          Math.max(
+            -1,
+            ...Object.entries(courseSettings)
+              .filter(([key, st]) => st.groupId === groupId && !movingKeys.has(key))
+              .map(([, st]) => (Number.isFinite(st.order) ? st.order : -1))
+          );
+        for (const course of list) {
+          courseSettings[course.key] = { ...(courseSettings[course.key] || {}), groupId, order: order++ };
+        }
+        used.add(groupId);
+      };
+      for (const root of plan.roots) {
+        const rootGroup = ensureGroup(root.name, null);
+        for (const child of root.children) assign(ensureGroup(child.name, rootGroup.id).id, child.courses);
+      }
+      if (plan.overig.length && groups.some((g) => g.id === NS.storage.OVERIG_ID)) assign(NS.storage.OVERIG_ID, plan.overig);
+
+      this.autosort = { open: false, strategy: null, all: false };
+      await this.patchState({ groups, courseSettings });
+      this.toast(`${plan.total} ${plan.total === 1 ? "vak" : "vakken"} ingedeeld in ${used.size} ${used.size === 1 ? "groep" : "groepen"}.`);
     }
 
     settingsCard(title, description, actions) {
@@ -810,6 +1068,14 @@
       if (action === "mode-all") return this.patchState({ organizerMode: "all" });
       if (action === "toggle-edit-mode") return this.patchState({ editMode: !this.state.editMode });
       if (action === "settings") return this.updateUIState({ settingsOpen: true });
+      if (action === "close-autosort-overlay" && event.target !== actionEl) return;
+      if (action === "auto-sort") return this.openAutoSort();
+      if (action === "close-autosort" || action === "close-autosort-overlay") return this.closeAutoSort();
+      if (action === "autosort-strategy") {
+        this.autosort.strategy = actionEl.dataset.value;
+        return this.render();
+      }
+      if (action === "autosort-apply") return this.applyAutoSort();
       if (action === "close-settings" || action === "close-settings-overlay") return this.updateUIState({ settingsOpen: false });
       if (action === "add-root-group") return this.createGroup(null);
       if (action === "add-subgroup") return this.createGroup(groupId);
@@ -852,13 +1118,17 @@
     }
 
     async handleChange(event) {
+      if (event.target.matches('[data-role="autosort-all"]')) {
+        this.autosort.all = event.target.checked;
+        return this.render();
+      }
       if (event.target.matches('[data-role="show-hidden"]')) {
         return this.patchState({ showHidden: event.target.checked });
       }
       if (event.target.matches('[data-role="accent-custom"]')) {
         return this.patchState({ appearance: { ...this.state.appearance, accent: event.target.value } });
       }
-      const dashKeys = { "dash-tasks": "showTasks", "dash-upcoming": "showUpcoming", "dash-hide-info": "hideInfoPanel" };
+      const dashKeys = { "dash-tasks": "showTasks", "dash-upcoming": "showUpcoming", "dash-hide-info": "hideInfoPanel", "dash-hero": "showHero", "dash-feed": "replaceFeed" };
       for (const [role, key] of Object.entries(dashKeys)) {
         if (event.target.matches(`[data-role="${role}"]`)) {
           return this.patchState({ dashboard: { ...this.state.dashboard, [key]: event.target.checked } });
@@ -1454,5 +1724,5 @@
     }
   }
 
-  NS.ui = { OrganizerUI, downloadJson, icon };
+  NS.ui = { OrganizerUI, downloadJson, icon, planAutoSort, recommendStrategy };
 })();

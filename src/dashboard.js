@@ -111,35 +111,118 @@
     }
   }
 
-  function scanUpcoming(today = startOfToday()) {
-    const seen = new Set();
-    const items = [];
-    document.querySelectorAll(".tol-events-widget .tol-event").forEach((node) => {
-      const dateText = node.querySelector(".tol-date")?.textContent || "";
-      const m = /(\d{1,2})\/(\d{1,2})\/(\d{4})/.exec(dateText);
-      if (!m) return;
-      const date = new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1]));
-      if (Number.isNaN(date.getTime()) || date < today) return;
-      const title = (node.querySelector(".tol-title")?.textContent || "").replace(/\s+/g, " ").trim();
-      if (!title) return;
-      const iso = toISO(date);
-      const dedupe = `${title}|${iso}`;
-      if (seen.has(dedupe)) return;
-      seen.add(dedupe);
-      items.push({
-        title,
-        iso,
-        date,
-        course: (node.querySelector(".tol-source")?.textContent || "").replace(/\s+/g, " ").trim(),
-        href: safeHref(node.querySelector("a")?.getAttribute("href")),
-        color: colorOf(node)
-      });
-    });
-    items.sort((a, b) => a.date - b.date);
-    return items.slice(0, MAX_UPCOMING);
+  // ---- parsed copy of Toledo's whole updates feed (can be 500+ items; parsed only when it changes) ----
+  const KINDS = ["notifications-content", "announcement", "due", "test", "gradebook", "course"];
+  const KIND_NAMES = { "notifications-content": "content" };
+  const KIND_LABELS = {
+    content: "Nieuwe inhoud",
+    announcement: "Mededeling",
+    due: "Deadline",
+    test: "Toets",
+    gradebook: "Nieuw cijfer",
+    course: "Vakupdate",
+    other: "Update"
+  };
+  const KIND_ICONS = { content: "file", announcement: "megaphone", due: "clock", test: "checkSquare", gradebook: "award", course: "book", other: "sparkle" };
+  const FEED_FILTERS = [
+    ["all", "Alles"],
+    ["content", "Inhoud"],
+    ["announcement", "Mededelingen"],
+    ["deadline", "Toetsen & deadlines"],
+    ["grade", "Cijfers"]
+  ];
+  const FEED_PAGE = 25;
+  const clean = (text) => (text || "").replace(/\s+/g, " ").trim();
+
+  function kindOf(node) {
+    const holder = node.className + " " + (node.querySelector('[class*="notifications-"]')?.className || "");
+    const m = /\bnotifications-(content|announcement|due|test|gradebook|course)\b/.exec(holder);
+    return m ? m[1] : "other";
   }
 
-  const upcomingSignature = (items) => `${toISO(startOfToday())}#${items.map((i) => `${i.title}|${i.iso}|${i.href || ""}|${i.color || ""}`).join("\n")}`;
+  // Returns { date, numeric } for "dd/mm/yyyy" or Dutch relative words, else null.
+  function parseFeedDate(text, today) {
+    const m = /(\d{1,2})\/(\d{1,2})\/(\d{4})/.exec(text);
+    if (m) {
+      const date = new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1]));
+      return Number.isNaN(date.getTime()) ? null : { date, numeric: true };
+    }
+    const word = text.trim().toLowerCase();
+    const offset = { vandaag: 0, gisteren: -1, morgen: 1 }[word];
+    if (offset == null) return null;
+    return { date: new Date(today.getFullYear(), today.getMonth(), today.getDate() + offset), numeric: false };
+  }
+
+  function parseFeed(today = startOfToday()) {
+    const items = [];
+    document.querySelectorAll(".tol-events-widget .tol-event").forEach((node) => {
+      const title = clean(node.querySelector(".tol-title")?.textContent);
+      if (!title) return;
+      const dateText = clean(node.querySelector(".tol-date")?.textContent);
+      const parsed = parseFeedDate(dateText, today);
+      const rawKind = kindOf(node);
+      items.push({
+        kind: KIND_NAMES[rawKind] || rawKind,
+        title,
+        dateText,
+        date: parsed?.date || null,
+        numeric: Boolean(parsed?.numeric),
+        author: clean(node.querySelector(".tol-what-happened strong")?.textContent),
+        course: clean(node.querySelector(".tol-source")?.textContent),
+        unread: node.classList.contains("tol-unread-item"),
+        color: colorOf(node),
+        anchor: node.matches("a") ? node : node.querySelector("a")
+      });
+    });
+    return items;
+  }
+
+  function feedSignature(today = startOfToday()) {
+    const nodes = document.querySelectorAll(".tol-events-widget .tol-event");
+    const first = nodes[0];
+    const unread = document.querySelectorAll(".tol-events-widget .tol-event.tol-unread-item").length;
+    return `${toISO(today)}#${nodes.length}#${clean(first?.querySelector(".tol-title")?.textContent)}|${clean(first?.querySelector(".tol-date")?.textContent)}#${unread}`;
+  }
+
+  function scanUpcoming(feed, today = startOfToday()) {
+    const seen = new Set();
+    const items = [];
+    for (const item of feed) {
+      if (!item.date || item.date < today) continue;
+      if (!item.numeric && item.kind !== "due" && item.kind !== "test") continue;
+      const iso = toISO(item.date);
+      const dedupe = `${item.title}|${iso}`;
+      if (seen.has(dedupe)) continue;
+      seen.add(dedupe);
+      items.push({
+        title: item.title,
+        iso,
+        date: item.date,
+        course: item.course,
+        href: safeHref(item.anchor?.getAttribute("href")),
+        color: item.color
+      });
+    }
+    items.sort((a, b) => a.date - b.date);
+    return items;
+  }
+
+  const upcomingSignature = (items) => `${toISO(startOfToday())}#${items.map((i) => `${i.title}|${i.iso}|${i.href || ""}|${i.color || ""}`).join(";")}`;
+
+  const greeting = (now = new Date()) => (now.getHours() < 12 ? "Goedemorgen" : now.getHours() < 18 ? "Goedemiddag" : "Goedenavond");
+
+  function feedTimeLabel(item, today) {
+    if (!item.date) return item.dateText.toLowerCase();
+    const diff = dayDiff(item.date, today);
+    if (diff === 0) return "vandaag";
+    if (diff === 1) return "morgen";
+    if (diff === -1) return "gisteren";
+    if (diff > 1) return `over ${diff} d`;
+    const short = `${item.date.getDate()} ${MONTHS[item.date.getMonth()]}`;
+    return item.date.getFullYear() === today.getFullYear() ? short : `${short} ${item.date.getFullYear()}`;
+  }
+
+  const feedCourseName = (course) => course.replace(/\s*\[[^\]]+\]\s*$/, "").trim();
 
   function iconNode(name) {
     return NS.ui?.icon ? NS.ui.icon(name) : document.createTextNode(name === "plus" ? "+" : "×");
@@ -152,6 +235,18 @@
       this.getCourses = getCourses;
       this.section = null;
       this.signature = null;
+      this.hero = null;
+      this.feedCache = { sig: null, items: [] };
+      this.feedFilter = "all";
+      this.feedLimit = FEED_PAGE;
+      this.feedShown = [];
+    }
+
+    // Parsed feed, re-parsed only when the cheap signature changes (or when forced).
+    getFeed(force = false) {
+      const sig = feedSignature();
+      if (force || sig !== this.feedCache.sig) this.feedCache = { sig, items: parseFeed() };
+      return this.feedCache.items;
     }
 
     isMounted() {
@@ -193,8 +288,113 @@
           this.patchTasks((tasks) => tasks.filter((t) => !t.done));
         } else if (action === "upcoming-to-task") {
           this.upcomingToTask(Number(actionEl.closest("[data-upcoming-index]")?.dataset.upcomingIndex));
+        } else if (action === "feed-filter") {
+          this.feedFilter = actionEl.dataset.value || "all";
+          this.feedLimit = FEED_PAGE;
+          this.render();
+        } else if (action === "feed-more") {
+          this.feedLimit += FEED_PAGE;
+          this.render();
         }
       });
+      section.addEventListener("click", (event) => {
+        const itemEl = event.target.closest(".to-feed-item");
+        if (itemEl && section.contains(itemEl)) this.openFeedItem(Number(itemEl.dataset.feedIndex));
+      });
+    }
+
+    openFeedItem(index) {
+      const item = this.feedShown[index];
+      if (!item) return;
+      let anchor = item.anchor;
+      if (!anchor?.isConnected) {
+        const fresh = this.getFeed(true).find((x) => x.title === item.title && x.dateText === item.dateText);
+        anchor = fresh?.anchor;
+      }
+      if (anchor?.isConnected) anchor.click();
+    }
+
+    bindHero(hero) {
+      if (hero.dataset.bound === "1") return;
+      hero.dataset.bound = "1";
+      const activate = (stat) => {
+        const kind = stat.dataset.kind;
+        if (kind === "tasks") {
+          const input = this.section?.querySelector('[data-role="task-text"]');
+          if (input) {
+            input.scrollIntoView({ behavior: "smooth", block: "center" });
+            input.focus({ preventScroll: true });
+          }
+        } else if (kind === "deadlines") {
+          this.section?.querySelector(".to-upcoming")?.scrollIntoView({ behavior: "smooth", block: "start" });
+        } else if (kind === "unread") {
+          this.feedFilter = "all";
+          this.feedLimit = FEED_PAGE;
+          this.render();
+          this.section?.querySelector(".to-feed")?.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+      };
+      hero.addEventListener("click", (event) => {
+        const stat = event.target.closest(".to-stat");
+        if (stat && hero.contains(stat)) activate(stat);
+      });
+      hero.addEventListener("keydown", (event) => {
+        if (event.key !== "Enter" && event.key !== " ") return;
+        const stat = event.target.closest(".to-stat");
+        if (!stat || !hero.contains(stat)) return;
+        event.preventDefault();
+        activate(stat);
+      });
+    }
+
+    heroContainer() {
+      return document.querySelector(".main-content > .container-fluid");
+    }
+
+    renderHero(state, feed, upcomingAll, today) {
+      const existing = document.getElementById("to-hero");
+      if (state.dashboard?.showHero === false) {
+        existing?.remove();
+        this.hero = null;
+        return;
+      }
+      const container = this.heroContainer();
+      if (!container) return;
+      const hero = existing || el("section", { id: "to-hero", class: "to-hero" });
+      if (container.firstElementChild !== hero) container.insertBefore(hero, container.firstChild);
+      this.hero = hero;
+      this.bindHero(hero);
+
+      const todayISO = toISO(today);
+      const taskCount = (state.tasks || []).filter((t) => !t.done && t.due && t.due <= todayISO).length;
+      const weekCount = upcomingAll.filter((i) => dayDiff(i.date, today) <= 6).length;
+      const unreadCount = feed.filter((i) => i.unread).length;
+      const plural = (n, one, many) => (n === 1 ? one : many);
+      const stat = (kind, value, label) =>
+        el("li", { class: "to-stat", "data-kind": kind, role: "button", tabindex: "0" }, [
+          el("span", { class: "to-stat-value", text: String(value) }),
+          el("span", { class: "to-stat-label", text: label })
+        ]);
+
+      hero.textContent = "";
+      hero.append(
+        el("div", { class: "to-hero-text" }, [
+          el("h1", { class: "to-hero-title", text: greeting() }),
+          el("p", { class: "to-hero-date", text: new Date().toLocaleDateString("nl-BE", { weekday: "long", day: "numeric", month: "long" }) })
+        ]),
+        el("ul", { class: "to-hero-stats" }, [
+          stat("tasks", taskCount, plural(taskCount, "taak voor vandaag", "taken voor vandaag")),
+          stat("deadlines", weekCount, plural(weekCount, "deadline deze week", "deadlines deze week")),
+          stat("unread", unreadCount, plural(unreadCount, "ongelezen update", "ongelezen updates"))
+        ])
+      );
+    }
+
+    // Called when the dashboard can no longer be mounted (e.g. navigated away).
+    unmount() {
+      document.getElementById("to-hero")?.remove();
+      this.hero = null;
+      document.documentElement.classList.remove("to-feed-replaced");
     }
 
     tasks() {
@@ -233,7 +433,16 @@
     // Re-renders only when the scraped feed (or the date) changed. Cheap enough for every scan.
     refreshIfChanged() {
       if (!this.isMounted()) return;
-      if (upcomingSignature(scanUpcoming()) !== this.signature) this.render();
+      const dash = this.getState()?.dashboard || {};
+      const heroMissing =
+        dash.showHero !== false &&
+        this.heroContainer() &&
+        !(this.hero && this.hero.isConnected && this.hero.parentElement?.firstElementChild === this.hero);
+      if (heroMissing || this.currentSignature() !== this.signature) this.render();
+    }
+
+    currentSignature(today = startOfToday()) {
+      return `${greeting()}#${feedSignature(today)}#${upcomingSignature(scanUpcoming(this.getFeed(), today))}`;
     }
 
     render() {
@@ -252,13 +461,24 @@
         due: this.section.querySelector('[data-role="task-due"]')?.value || ""
       };
 
-      const upcoming = scanUpcoming();
+      const today = startOfToday();
+      const feed = this.getFeed();
+      const upcomingAll = scanUpcoming(feed, today);
+      const upcoming = upcomingAll.slice(0, MAX_UPCOMING);
       this.currentUpcoming = upcoming;
-      this.signature = upcomingSignature(upcoming);
+      this.signature = `${greeting()}#${feedSignature(today)}#${upcomingSignature(upcomingAll)}`;
+
+      const focusedChip = active?.matches?.(".to-chip") && this.section.contains(active) ? active.dataset.value : null;
+
+      this.renderHero(state, feed, upcomingAll, today);
 
       this.section.textContent = "";
       if (dash.showTasks !== false) this.section.append(this.renderTasks(state, draft));
       if (dash.showUpcoming !== false) this.section.append(this.renderUpcoming(upcoming));
+      const showFeed = dash.replaceFeed !== false;
+      if (showFeed) this.section.append(this.renderFeed(feed, today));
+      document.documentElement.classList.toggle("to-feed-replaced", showFeed);
+      if (focusedChip) this.section.querySelector(`.to-chip[data-value="${focusedChip}"]`)?.focus({ preventScroll: true });
 
       if (taskInputFocus) {
         const input = this.section.querySelector('[data-role="task-text"]');
@@ -362,7 +582,7 @@
         const title = item.href
           ? el("a", { class: "to-upcoming-title", href: item.href, text: item.title })
           : el("span", { class: "to-upcoming-title", text: item.title });
-        const meta = [item.course, relativeLabel(diff)].filter(Boolean).join(" · ");
+        const meta = [feedCourseName(item.course || ""), relativeLabel(diff)].filter(Boolean).join(" · ");
         const add = el("button", {
           class: "to-btn ghost tiny icon",
           type: "button",
@@ -381,6 +601,99 @@
       });
       card.append(list);
       return card;
+    }
+
+    renderFeed(feed, today) {
+      const unreadCount = feed.filter((i) => i.unread).length;
+      const matches = {
+        all: () => true,
+        content: (i) => i.kind === "content",
+        announcement: (i) => i.kind === "announcement",
+        deadline: (i) => i.kind === "due" || i.kind === "test",
+        grade: (i) => i.kind === "gradebook"
+      };
+      if (!matches[this.feedFilter]) this.feedFilter = "all";
+      const filtered = feed.filter(matches[this.feedFilter]);
+
+      const planned = [];
+      const todayItems = [];
+      const yesterday = [];
+      const earlier = [];
+      for (const item of filtered) {
+        const diff = item.date ? dayDiff(item.date, today) : null;
+        if (diff != null && diff > 0) planned.push(item);
+        else if (diff === 0) todayItems.push(item);
+        else if (diff === -1) yesterday.push(item);
+        else earlier.push(item);
+      }
+      planned.sort((a, b) => a.date - b.date);
+      const sections = [
+        ["Gepland", planned],
+        ["Vandaag", todayItems],
+        ["Gisteren", yesterday],
+        ["Eerder", earlier]
+      ].filter(([, list]) => list.length);
+
+      const chips = el(
+        "div",
+        { class: "to-feed-filters", role: "tablist" },
+        FEED_FILTERS.map(([value, label]) =>
+          el("button", {
+            class: `to-chip${this.feedFilter === value ? " active" : ""}`,
+            type: "button",
+            "data-action": "feed-filter",
+            "data-value": value,
+            role: "tab",
+            "aria-selected": this.feedFilter === value ? "true" : "false",
+            text: label
+          })
+        )
+      );
+
+      const card = el("div", { class: "to-dash-card to-feed" }, [
+        el("div", { class: "to-dash-head" }, [
+          el("h3", { class: "to-dash-title", text: "Updates" }),
+          el("span", { class: `to-count${unreadCount ? "" : " is-zero"}`, text: String(unreadCount) })
+        ]),
+        chips
+      ]);
+
+      const list = el("div", { class: "to-feed-list" });
+      this.feedShown = [];
+      let remaining = this.feedLimit;
+      let total = 0;
+      for (const [label, items] of sections) {
+        total += items.length;
+        if (remaining <= 0) continue;
+        const slice = items.slice(0, remaining);
+        remaining -= slice.length;
+        list.append(el("div", { class: "to-feed-day", text: label }));
+        for (const item of slice) {
+          list.append(this.renderFeedItem(item, this.feedShown.length, today));
+          this.feedShown.push(item);
+        }
+      }
+      card.append(list);
+      if (!filtered.length) card.append(el("div", { class: "to-dash-empty", text: "Geen updates in deze categorie." }));
+      if (total > this.feedShown.length) {
+        card.append(el("button", { class: "to-btn ghost small to-feed-more", type: "button", "data-action": "feed-more", text: "Meer tonen" }));
+      }
+      return card;
+    }
+
+    renderFeedItem(item, index, today) {
+      const kind = KIND_LABELS[item.kind] ? item.kind : "other";
+      const iconEl = el("span", { class: "to-feed-icon", "data-kind": kind, style: item.color ? `--to-item-color:${item.color}` : null });
+      iconEl.append(iconNode(KIND_ICONS[kind]));
+      const meta = [KIND_LABELS[kind], feedCourseName(item.course), item.author].filter(Boolean).join(" · ");
+      return el("button", { class: `to-feed-item${item.unread ? " is-unread" : ""}`, type: "button", "data-feed-index": String(index) }, [
+        iconEl,
+        el("span", { class: "to-feed-main" }, [
+          el("span", { class: "to-feed-title", text: item.title }),
+          el("span", { class: "to-feed-meta", text: meta })
+        ]),
+        el("span", { class: "to-feed-time", text: feedTimeLabel(item, today) })
+      ]);
     }
   }
 

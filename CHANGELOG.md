@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.5.0 — 2026-10-14
+
+- Eigen pagina-indeling: bredere pagina, vakken links en een vaste zijbalk rechts die meescrolt.
+- Begroeting bovenaan met datum en drie cijfers: taken voor vandaag, deadlines deze week, ongelezen updates.
+- Eigen updates-overzicht in plaats van dat van Toledo: duidelijkere teksten (Nieuwe inhoud, Mededeling, Deadline, Toets, Nieuw cijfer), gegroepeerd per dag, met filters. Klikken gaat nog steeds via Toledo, dus berichten worden als gelezen gemarkeerd.
+- Slim indelen: stelt een groepsindeling voor op basis van instelling, semester, opleidingscode of academiejaar, met een voorbeeld vooraf. "Niet ingedeeld" raadt het aan zodra er vakken wachten.
+- Kop van de organizer heet nu "Mijn vakken", met het aantal vakken en groepen.
+- Voettekst volgt het thema (was wit in donkere modus); gekleurde bolletjes bij updates verschijnen weer.
+
 ## 0.4.0 — 2026-10-14
 
 - Donkere modus: Systeem, Licht of Donker, voor de organizer, het dashboard en heel het Toledo-portaal.

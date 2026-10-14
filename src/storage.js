@@ -18,7 +18,7 @@
     themeEnabled: true,
     appearance: { mode: "system", accent: DEFAULT_ACCENT },
     tasks: [],
-    dashboard: { showTasks: true, showUpcoming: true, hideInfoPanel: false },
+    dashboard: { showTasks: true, showUpcoming: true, hideInfoPanel: false, showHero: true, replaceFeed: true },
     groups: [
       {
         id: OVERIG_ID,
@@ -177,7 +177,9 @@
       dashboard: {
         showTasks: saved.dashboard?.showTasks !== false,
         showUpcoming: saved.dashboard?.showUpcoming !== false,
-        hideInfoPanel: Boolean(saved.dashboard?.hideInfoPanel)
+        hideInfoPanel: Boolean(saved.dashboard?.hideInfoPanel),
+        showHero: saved.dashboard?.showHero !== false,
+        replaceFeed: saved.dashboard?.replaceFeed !== false
       },
       groups,
       courseSettings: sanitizeCourseSettings(saved.courseSettings, groupIds),

@@ -14,7 +14,9 @@
   .tol-event { padding: 6px 0; }
   .tol-date, .tol-source { display: block; font-size: 12px; color: #667; }
 </style>
+<div class="main-content"><div class="container-fluid">
 <div id="layout"><div id="mount"><div id="mount-anchor"></div></div><div id="side" class="col-md-4"></div></div>
+</div></div>
 <!-- Demo data for README screenshots. Open with ?edit=1 for edit mode. Serve the repo root over http. -->
 <script>
 window.chrome = {
@@ -49,7 +51,12 @@ window.chrome = {
     course("KUL", "E0J08a", "Histologie", [["2526", true]]),
     course("UCLL", "QM1359", "Klinische chemie 1", [["2627", true]]),
     course("UCLL", "QM1402", "Hematologie", [["2627", true]]),
-    course("KUL", "E0K77a", "Medische statistiek", [["2627", true]])
+    course("KUL", "E0K77a", "Medische statistiek", [["2627", true]]),
+    course("KUL", "E0I77a", "Pathologie", [["2627", true], ["2526", true]], { semester: 1 }),
+    course("KUL", "E0I78a", "Farmacologie", [["2526", true]], { semester: 2 }),
+    course("KUL", "E0J21a", "Immunologie", [["2425", true]]),
+    course("UCLL", "QM1511", "Microbiologie", [["2526", true]], { semester: 2 }),
+    course("UCLL", "QM1520", "Parasitologie", [["2627", true]], { semester: 1 })
   ];
 
   if (params.get("dark") === "1") document.documentElement.classList.add("to-dark");
@@ -63,16 +70,39 @@ window.chrome = {
   const side = document.getElementById("side");
   const widget = document.createElement("div");
   widget.className = "panel tol-events-widget";
-  [[1, 3, "Test hoofdstuk 4", "Biochemie"], [3, 12, "Indienen verslag labo", "Klinische chemie 1"],
-   [9, 5, "Mondeling examen", "Fysiologie I"], [-2, 7, "Oud bericht", "Histologie"]].forEach(([off, color, title, source]) => {
+  // [date (offset in days, or a word), colour, kind, title, source, author, unread]
+  const events = [
+    [1, 3, "due", "Test hoofdstuk 4", "Biochemie [QM1374]", null, true],
+    [3, 12, "due", "Indienen verslag labo", "Klinische chemie 1", null, false],
+    [9, 5, "test", "Mondeling examen", "Fysiologie I", null, false],
+    [5, 9, "test", "Tussentijdse toets", "Hematologie", null, true],
+    ["Gisteren", 13, "content", "Hoofdstuk 5: Spijsvertering", "Fysiologie I", "Docent Naam", true],
+    ["Gisteren", 4, "announcement", "Les valt uit donderdag", "Histologie", "Prof. Peeters", true],
+    [-2, 7, "gradebook", "Resultaat labo 1", "Histologie", null, false],
+    [-3, 15, "content", "Slides week 3", "Anatomie II: theorie", "Docent Naam", false],
+    [-4, 2, "announcement", "Herinnering: inschrijven voor practicum", "Klinische chemie 1", "An Janssens", false],
+    [-6, 10, "course", "Nieuwe cursusversie beschikbaar", "Medische statistiek", null, false],
+    [-8, 11, "gradebook", "Punten tussentijdse toets", "Biochemie", null, true],
+    [-30, 16, "content", "Oefeningenbundel", "Anatomie II: theorie", "Docent Naam", false],
+    [-400, 1, "announcement", "Welkom bij het vak", "Histologie", "Prof. Peeters", false]
+  ];
+  events.forEach(([off, color, kind, title, source, author, unread]) => {
     const item = document.createElement("div");
-    item.className = `tol-event color-${color} notifications-due`;
+    item.className = `tol-event color-${color} notifications-${kind}${unread ? " tol-unread-item" : ""}`;
     const a = document.createElement("a");
     a.href = "https://toledo.kuleuven.be/x";
-    const date = document.createElement("span"); date.className = "tol-date"; date.textContent = fmt(off);
+    a.addEventListener("click", (e) => { e.preventDefault(); item.classList.remove("tol-unread-item"); });
+    const date = document.createElement("span"); date.className = "tol-date"; date.textContent = typeof off === "string" ? off : fmt(off);
     const t = document.createElement("span"); t.className = "tol-title"; t.textContent = title;
     const src = document.createElement("span"); src.className = "tol-source"; src.textContent = source;
-    a.append(date, t, src);
+    a.append(date, t);
+    if (author) {
+      const what = document.createElement("span"); what.className = "tol-what-happened";
+      const strong = document.createElement("strong"); strong.textContent = author;
+      what.append(strong, document.createTextNode(kind === "content" ? " heeft inhoud toegevoegd" : " heeft een mededeling geplaatst"));
+      a.append(what);
+    }
+    a.append(src);
     item.append(a);
     widget.append(item);
   });
@@ -121,6 +151,7 @@ window.chrome = {
   ui.expandedCourses.add("KUL:E0I31a");
   ui.mount(document.getElementById("mount-anchor"));
   dash.mount(side);
+  if (params.get("autosort") === "1") ui.openAutoSort();
   if (params.get("settings") === "1") await ui.updateUIState({ settingsOpen: true });
 })();
 </script>
