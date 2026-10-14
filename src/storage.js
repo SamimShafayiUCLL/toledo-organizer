@@ -3,6 +3,10 @@
   const STORAGE_KEY = "toledoOrganizerState";
   const OVERIG_ID = "builtin-overig";
 
+  const DEFAULT_ACCENT = "#00627f";
+  const MAX_TASKS = 500;
+  const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
   const defaultState = () => ({
     schemaVersion: 2,
     viewMode: "organizer",
@@ -12,6 +16,9 @@
     editMode: false,
     courseSort: "custom",
     themeEnabled: true,
+    appearance: { mode: "system", accent: DEFAULT_ACCENT },
+    tasks: [],
+    dashboard: { showTasks: true, showUpcoming: true, hideInfoPanel: false },
     groups: [
       {
         id: OVERIG_ID,
@@ -111,6 +118,34 @@
     return out;
   }
 
+  function sanitizeTasks(raw) {
+    if (!Array.isArray(raw)) return [];
+    const seen = new Set();
+    const tasks = [];
+    for (const task of raw) {
+      if (tasks.length >= MAX_TASKS) break;
+      if (!isPlainObject(task)) continue;
+      if (typeof task.id !== "string" || !task.id || seen.has(task.id)) continue;
+      if (typeof task.text !== "string") continue;
+      const text = task.text.trim();
+      if (!text || text.length > 300) continue;
+      if (typeof task.done !== "boolean") continue;
+      if (task.due != null && !(typeof task.due === "string" && DATE_RE.test(task.due))) continue;
+      if (task.tag != null && !(typeof task.tag === "string" && task.tag.length <= 120)) continue;
+      seen.add(task.id);
+      tasks.push({
+        id: task.id,
+        text,
+        done: task.done,
+        due: task.due ?? null,
+        tag: task.tag ?? null,
+        createdAt: Number.isFinite(task.createdAt) ? task.createdAt : Date.now(),
+        doneAt: Number.isFinite(task.doneAt) ? task.doneAt : null
+      });
+    }
+    return tasks;
+  }
+
   function mergeState(saved) {
     const base = defaultState();
     if (!isPlainObject(saved)) return base;
@@ -134,6 +169,16 @@
       editMode: Boolean(saved.editMode),
       courseSort: ["custom", "az", "za"].includes(saved.courseSort) ? saved.courseSort : "custom",
       themeEnabled: saved.themeEnabled !== false,
+      appearance: {
+        mode: ["system", "light", "dark"].includes(saved.appearance?.mode) ? saved.appearance.mode : "system",
+        accent: COLOR_RE.test(saved.appearance?.accent || "") ? saved.appearance.accent : DEFAULT_ACCENT
+      },
+      tasks: sanitizeTasks(saved.tasks),
+      dashboard: {
+        showTasks: saved.dashboard?.showTasks !== false,
+        showUpcoming: saved.dashboard?.showUpcoming !== false,
+        hideInfoPanel: Boolean(saved.dashboard?.hideInfoPanel)
+      },
       groups,
       courseSettings: sanitizeCourseSettings(saved.courseSettings, groupIds),
       ui: {

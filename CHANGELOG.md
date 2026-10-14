@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.4.0 — 2026-10-14
+
+- Donkere modus: Systeem, Licht of Donker, voor de organizer, het dashboard en heel het Toledo-portaal.
+- Eigen accentkleur: kies een van de voorinstellingen of een eigen kleur; knoppen, links en de bovenbalk passen zich aan.
+- Takenlijst in de rechterkolom: taken toevoegen met Enter, optionele deadline, afvinken, verwijderen, afgewerkte wissen. Te laat en vandaag vallen op. Alles blijft lokaal.
+- "Binnenkort": deadlines en toetsen uit Toledo's updates, de eerstvolgende bovenaan, met één klik om te zetten in een taak.
+- Sneltoetsen: `/` om te zoeken, `n` voor een nieuwe taak.
+- Optie om Toledo's informatiepaneel te verbergen.
+- De gekleurde bolletjes bij updates hebben weer de juiste vorm en kleur.
+
 ## 0.3.0 — 2026-10-14
 
 - Nieuw ontwerp: vakken als rustige lijst in plaats van kaarten-in-kaarten, kleuren als bolletje in plaats van gekleurde linkerrand, lijn-iconen in plaats van emoji, knop "Bewerken"/"Klaar".

@@ -6,18 +6,25 @@
 */
 
 html:not(.to-theme-off) {
-  --tt-brand: #00506b;
-  --tt-brand-deep: #003f55;
-  --tt-accent: #00627f;
-  --tt-accent-soft: #e6f1f5;
+  /* The accent follows the user's setting (--to-user-accent); the top bar is a deeper shade of it. */
+  --tt-accent: var(--to-user-accent, #00627f);
+  --tt-brand: color-mix(in srgb, var(--tt-accent) 82%, #000);
+  --tt-brand-deep: color-mix(in srgb, var(--tt-accent) 65%, #000);
+  --tt-accent-soft: color-mix(in srgb, var(--tt-accent) 11%, #fff);
+  --tt-accent-text: var(--tt-accent);
   --tt-text: #1d2433;
   --tt-muted: #5d6879;
   --tt-faint: #8e98a8;
   --tt-line: #e3e7ed;
   --tt-line-soft: #eef0f4;
+  --tt-line-strong: #cfd5de;
   --tt-bg: #f3f5f8;
   --tt-surface: #ffffff;
+  --tt-sunken: #f7f8fa;
   --tt-hover: #f5f7f9;
+  --tt-row-hover: #fbfbfc;
+  --tt-shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.04);
+  --tt-shadow-lg: 0 12px 32px rgba(16, 24, 40, 0.14);
   --tt-radius: 12px;
   --tt-font: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, Roboto, "Helvetica Neue", Arial, sans-serif;
 
@@ -125,7 +132,7 @@ html:not(.to-theme-off) {
     padding: 6px;
     border: 1px solid var(--tt-line) !important;
     border-radius: 10px !important;
-    box-shadow: 0 12px 32px rgba(16, 24, 40, 0.14) !important;
+    box-shadow: var(--tt-shadow-lg) !important;
     font-size: 13.5px;
   }
   .dropdown-menu > li > a {
@@ -144,7 +151,7 @@ html:not(.to-theme-off) {
   .panel {
     border: 1px solid var(--tt-line) !important;
     border-radius: var(--tt-radius) !important;
-    box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04) !important;
+    box-shadow: var(--tt-shadow-sm) !important;
     background: var(--tt-surface);
     overflow: hidden;
   }
@@ -160,12 +167,12 @@ html:not(.to-theme-off) {
   .panel .panel-title { font-size: 14px; font-weight: 650; color: var(--tt-text); }
   .panel-footer { background: var(--tt-surface); border-top: 1px solid var(--tt-line-soft); }
 
-  a { color: var(--tt-accent); }
+  a { color: var(--tt-accent-text); }
   a:hover, a:focus { color: var(--tt-brand-deep); }
 
   .btn { border-radius: 8px; font-weight: 500; text-shadow: none; box-shadow: none; }
   .btn-default { border-color: var(--tt-line); color: var(--tt-text); background: var(--tt-surface); }
-  .btn-default:hover { background: var(--tt-hover); border-color: #cfd5de; }
+  .btn-default:hover { background: var(--tt-hover); border-color: var(--tt-line-strong); }
   .btn-primary,
   .btn-primary.active { background: var(--tt-accent) !important; border-color: var(--tt-accent) !important; background-image: none !important; }
   .form-control {
@@ -208,27 +215,40 @@ html:not(.to-theme-off) {
     vertical-align: 1px;
   }
   .tol-event .tol-is-new { display: none; }
-  /* Course source: colored dot instead of Toledo's colored left bar. The dot is drawn with the
-     inherited left-border colour (set per course colour by Toledo). */
+  /* Course source: a coloured dot instead of Toledo's coloured left bar. Toledo only exposes the
+     colour as that border, so its palette (color-1..16, read from Toledo in 2026) is repeated here. */
   .tol-event .tol-source {
     display: flex;
     align-items: center;
     gap: 7px;
     margin-top: 3px;
     padding-left: 0 !important;
-    border-left-width: 0 !important;
+    border-left: 0 !important;
     color: var(--tt-faint);
     font-style: normal;
   }
   .tol-event .tol-source::before {
     content: "";
     flex: none;
-    width: 0;
+    width: 8px;
     height: 8px;
-    border-left: 8px solid;
-    border-left-color: inherit;
     border-radius: 50%;
+    background: var(--tt-dot, var(--tt-faint));
   }
+  .tol-event.color-1 { --tt-dot: #90514e; }
+  .tol-event.color-2 { --tt-dot: #c66f48; }
+  .tol-event.color-3 { --tt-dot: #d92d2d; }
+  .tol-event.color-4 { --tt-dot: #f26d50; }
+  .tol-event.color-5 { --tt-dot: #d39425; }
+  .tol-event.color-7 { --tt-dot: #dec586; }
+  .tol-event.color-8 { --tt-dot: #f2cf3b; }
+  .tol-event.color-9 { --tt-dot: #5a9b4f; }
+  .tol-event.color-10 { --tt-dot: #7abf1e; }
+  .tol-event.color-11 { --tt-dot: #1e7069; }
+  .tol-event.color-12 { --tt-dot: #32c3b5; }
+  .tol-event.color-13 { --tt-dot: #4a6d88; }
+  .tol-event.color-15 { --tt-dot: #915ed0; }
+  .tol-event.color-16 { --tt-dot: #d2649d; }
 
   /* ---------- Toledo's own course list ---------- */
   .toledo-enrollments-list { background: var(--tt-surface) !important; }
@@ -249,7 +269,7 @@ html:not(.to-theme-off) {
     background: var(--tt-surface) !important;
     transition: background-color 120ms ease;
   }
-  .enrollment-list-item:hover { background: #fbfbfc !important; }
+  .enrollment-list-item:hover { background: var(--tt-row-hover) !important; }
   /* No colour stripe: the tinted course icon already carries the course colour. */
   .enrollment-list-item .color-indicator { display: none !important; }
   .enrollment-list-item .right-area { margin-left: 0 !important; width: 100% !important; }
@@ -267,5 +287,80 @@ html:not(.to-theme-off) {
       box-shadow: none !important;
       overflow: visible;
     }
+  }
+
+  /* ---------- Dark mode (html.to-dark, from the organizer's appearance setting) ---------- */
+  &.to-dark {
+    --tt-brand: color-mix(in srgb, var(--tt-accent) 22%, #0f1217);
+    --tt-brand-deep: #0b0e12;
+    --tt-accent-soft: color-mix(in srgb, var(--tt-accent) 22%, #161a21);
+    --tt-accent-text: color-mix(in srgb, var(--tt-accent) 62%, #fff);
+    --tt-text: #e6e9ef;
+    --tt-muted: #a7b0be;
+    --tt-faint: #77818f;
+    --tt-line: #2b323d;
+    --tt-line-soft: #232a33;
+    --tt-line-strong: #3a4350;
+    --tt-bg: #0f1217;
+    --tt-surface: #161a21;
+    --tt-sunken: #1b2028;
+    --tt-hover: #222833;
+    --tt-row-hover: #1a1f27;
+    --tt-shadow-sm: none;
+    --tt-shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.5);
+    color-scheme: dark;
+
+    .navbar-primary { box-shadow: 0 1px 0 var(--tt-line); }
+    h1, h2, h3, h4, h5, h6, .h1, .h2, .h3, .h4, .h5, .h6, legend, label { color: var(--tt-text); }
+    .text-muted, .help-block { color: var(--tt-faint); }
+    hr { border-top-color: var(--tt-line); }
+    .panel, .well, .list-group-item, .modal-content, .popover, .thumbnail, .jumbotron {
+      background: var(--tt-surface) !important;
+      border-color: var(--tt-line) !important;
+      color: var(--tt-text);
+    }
+    .well, .breadcrumb, pre, code, kbd { background: var(--tt-sunken) !important; color: var(--tt-text); border-color: var(--tt-line); }
+    .modal-header, .modal-footer, .panel-footer, .list-group-item { border-color: var(--tt-line-soft) !important; }
+    .close { color: var(--tt-text); text-shadow: none; opacity: 0.6; }
+    .table { color: var(--tt-text); }
+    .table > thead > tr > th,
+    .table > tbody > tr > td,
+    .table > tbody > tr > th,
+    .table > tfoot > tr > td { border-color: var(--tt-line-soft) !important; }
+    .table-striped > tbody > tr:nth-of-type(odd) { background: var(--tt-sunken); }
+    .table-hover > tbody > tr:hover { background: var(--tt-hover); }
+    .form-control, .input-group-addon, select, textarea {
+      background-color: var(--tt-sunken);
+      border-color: var(--tt-line);
+      color: var(--tt-text);
+    }
+    .form-control::placeholder { color: var(--tt-faint); }
+    .btn-default { background: var(--tt-surface); border-color: var(--tt-line); color: var(--tt-text); }
+    .btn-default:hover, .btn-default:focus, .btn-default.active, .open > .btn-default.dropdown-toggle { background: var(--tt-hover); color: var(--tt-text); }
+    .btn-link { color: var(--tt-accent-text); }
+    .dropdown-menu { background: var(--tt-surface); }
+    .dropdown-menu > li > a { color: var(--tt-text); }
+    .dropdown-menu .divider { background: var(--tt-line-soft); }
+    .nav-tabs { border-bottom-color: var(--tt-line); }
+    .nav-tabs > li > a { color: var(--tt-muted); }
+    .nav-tabs > li > a:hover { background: var(--tt-hover); border-color: transparent; }
+    .nav-tabs > li.active > a,
+    .nav-tabs > li.active > a:hover,
+    .nav-tabs > li.active > a:focus { background: var(--tt-surface); color: var(--tt-text); border-color: var(--tt-line) var(--tt-line) transparent; }
+    .nav-pills > li > a { color: var(--tt-muted); }
+    .nav > li > a:hover, .nav > li > a:focus { background: var(--tt-hover); }
+    .pagination > li > a, .pagination > li > span { background: var(--tt-surface); border-color: var(--tt-line); color: var(--tt-text); }
+    .pagination > .active > a, .pagination > .active > span { background: var(--tt-accent); border-color: var(--tt-accent); color: #fff; }
+    .label-default { background: var(--tt-hover); color: var(--tt-text); }
+    .alert { border-color: var(--tt-line); }
+    .alert-info { background: color-mix(in srgb, #2f80ed 16%, var(--tt-surface)); color: var(--tt-text); }
+    .alert-warning { background: color-mix(in srgb, #f5a524 16%, var(--tt-surface)); color: var(--tt-text); }
+    .alert-danger { background: color-mix(in srgb, #e5484d 16%, var(--tt-surface)); color: var(--tt-text); }
+    .alert-success { background: color-mix(in srgb, #16a34a 16%, var(--tt-surface)); color: var(--tt-text); }
+    .tol-event .tol-title, .learning-unit-title { color: var(--tt-text) !important; }
+    .tol-event .tol-what-happened strong { color: var(--tt-text); }
+    .tol-info-links a { color: var(--tt-accent-text); }
+    #portal-search .form-control:focus { background: var(--tt-surface) !important; color: var(--tt-text) !important; -webkit-text-fill-color: var(--tt-text); border-color: var(--tt-line-strong) !important; }
+    footer img { opacity: 0.55; filter: grayscale(1) invert(1); }
   }
 }

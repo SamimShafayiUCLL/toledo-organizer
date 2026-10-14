@@ -5,9 +5,16 @@
 <link rel="stylesheet" href="../styles/organizer.css">
 <style>
   body { margin: 0; padding: 24px; background: #f2f4f8; font: 14px/1.4 "Segoe UI", system-ui, sans-serif; }
-  #mount { max-width: 1000px; margin: 0 auto; }
+  #layout { display: flex; gap: 20px; align-items: flex-start; max-width: 1400px; margin: 0 auto; }
+  #mount { flex: 0 0 65%; min-width: 0; }
+  #side { flex: 1 1 35%; min-width: 0; }
+  html.to-dark body { background: #0f1217; }
+  /* The fake Toledo feed only feeds the dashboard; on Toledo it is styled by the theme. */
+  .tol-events-widget { display: none; }
+  .tol-event { padding: 6px 0; }
+  .tol-date, .tol-source { display: block; font-size: 12px; color: #667; }
 </style>
-<div id="mount"></div>
+<div id="layout"><div id="mount"><div id="mount-anchor"></div></div><div id="side" class="col-md-4"></div></div>
 <!-- Demo data for README screenshots. Open with ?edit=1 for edit mode. Serve the repo root over http. -->
 <script>
 window.chrome = {
@@ -18,6 +25,7 @@ window.chrome = {
 <script src="../src/storage.js"></script>
 <script src="../src/matcher.js"></script>
 <script src="../src/ui.js"></script>
+<script src="../src/dashboard.js"></script>
 <script>
 (async () => {
   const NS = window.ToledoOrganizer;
@@ -44,7 +52,39 @@ window.chrome = {
     course("KUL", "E0K77a", "Medische statistiek", [["2627", true]])
   ];
 
+  if (params.get("dark") === "1") document.documentElement.classList.add("to-dark");
+  if (params.get("accent")) document.documentElement.style.setProperty("--to-user-accent", params.get("accent"));
+
+  // Fake Toledo right column: .col-md-4 > .panel.tol-events-widget with dd/mm/yyyy dated events.
+  const fmt = (offset) => {
+    const d = new Date(); d.setDate(d.getDate() + offset);
+    return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`;
+  };
+  const side = document.getElementById("side");
+  const widget = document.createElement("div");
+  widget.className = "panel tol-events-widget";
+  [[1, 3, "Test hoofdstuk 4", "Biochemie"], [3, 12, "Indienen verslag labo", "Klinische chemie 1"],
+   [9, 5, "Mondeling examen", "Fysiologie I"], [-2, 7, "Oud bericht", "Histologie"]].forEach(([off, color, title, source]) => {
+    const item = document.createElement("div");
+    item.className = `tol-event color-${color} notifications-due`;
+    const a = document.createElement("a");
+    a.href = "https://toledo.kuleuven.be/x";
+    const date = document.createElement("span"); date.className = "tol-date"; date.textContent = fmt(off);
+    const t = document.createElement("span"); t.className = "tol-title"; t.textContent = title;
+    const src = document.createElement("span"); src.className = "tol-source"; src.textContent = source;
+    a.append(date, t, src);
+    item.append(a);
+    widget.append(item);
+  });
+  side.append(widget);
+
   const state = NS.storage.defaultState();
+  const iso = (off) => { const d = new Date(); d.setDate(d.getDate() + off); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
+  state.tasks = [
+    { id: "t1", text: "Samenvatting anatomie afwerken", done: false, due: iso(-1), tag: "Anatomie II", createdAt: 1, doneAt: null },
+    { id: "t2", text: "Labo-verslag nalezen", done: false, due: iso(0), tag: null, createdAt: 2, doneAt: null },
+    { id: "t3", text: "Boeken terugbrengen", done: true, due: null, tag: null, createdAt: 3, doneAt: 4 }
+  ];
   state.editMode = params.get("edit") === "1";
   state.groups = [
     { id: "med", name: "Geneeskunde", parentId: null, order: 0, collapsed: false, color: "#7c5cdb" },
@@ -66,14 +106,21 @@ window.chrome = {
   };
 
   const enrollments = courses.flatMap((c) => c.versions.map((x) => ({ ...x, key: c.key, code: c.code })));
+  let current = NS.storage.validateImportedState(state);
+  const dash = new NS.dashboard.Dashboard({
+    getState: () => current,
+    setState: async (patch) => { current = { ...current, ...patch }; ui.state = current; dash.render(); ui.render(); },
+    getCourses: () => courses
+  });
   const ui = new NS.ui.OrganizerUI({
-    state: NS.storage.validateImportedState(state),
-    onStateChange: async () => {},
+    state: current,
+    onStateChange: async (next) => { current = next; dash.render(); },
     getCourses: () => courses,
     getEnrollments: () => enrollments
   });
   ui.expandedCourses.add("KUL:E0I31a");
-  ui.mount(document.getElementById("mount"));
+  ui.mount(document.getElementById("mount-anchor"));
+  dash.mount(side);
   if (params.get("settings") === "1") await ui.updateUIState({ settingsOpen: true });
 })();
 </script>

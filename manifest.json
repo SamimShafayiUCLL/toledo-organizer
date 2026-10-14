@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Toledo Organizer",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Organize your KU Leuven Toledo courses into your own groups, merge academic years and pick a default version per course.",
   "icons": {
     "16": "icons/icon16.png",
@@ -22,6 +22,7 @@
         "src/detector.js",
         "src/matcher.js",
         "src/ui.js",
+        "src/dashboard.js",
         "src/content.js"
       ],
       "css": ["styles/toledo-theme.css", "styles/organizer.css"],
