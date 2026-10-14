@@ -61,7 +61,13 @@
   function ensureDashboard() {
     if (!state) return;
     const container = dashboardContainer();
-    if (!container) return;
+    if (!container) {
+      // Not on the home page (anymore): leave nothing behind that hides Toledo's own widgets.
+      if (dashboard) dashboard.unmount();
+      document.documentElement.classList.remove("to-feed-replaced");
+      document.getElementById("to-hero")?.remove();
+      return;
+    }
     if (!dashboard) {
       dashboard = new NS.dashboard.Dashboard({
         getState: () => state,
@@ -239,9 +245,10 @@
 
   function isRelevantMutation(mutation) {
     const target = mutation.target.nodeType === Node.ELEMENT_NODE ? mutation.target : mutation.target.parentElement;
-    if (!target || target.closest?.(`#${ROOT_ID}, #to-dashboard`)) return false;
+    if (!target || target.closest?.(`#${ROOT_ID}, #to-dashboard, #to-hero`)) return false;
     // Class/href changes only matter on enrollment items.
-    if (mutation.type === "attributes") return Boolean(target.closest?.(".enrollment-list-item, .tol-enrollment-container"));
+    // Unread state of feed items changes via class too (Toledo marks an item read after a click).
+    if (mutation.type === "attributes") return Boolean(target.closest?.(".enrollment-list-item, .tol-enrollment-container, .tol-events-widget"));
     return true;
   }
 

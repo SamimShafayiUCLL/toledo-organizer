@@ -23,12 +23,18 @@ A browser extension for `https://toledo.kuleuven.be/` that shows your Toledo cou
 - Edit mode: management controls, colors and renaming stay hidden until you turn it on
 - Import and export settings as JSON
 - Toggle between the Organizer and the original Toledo view
+- Its own page layout: wider page, your courses on the left and a sticky sidebar on the right
+- A greeting header with today's numbers: tasks due today, deadlines this week, unread updates
+- A rewritten updates feed: clearer wording per type (new content, announcement, deadline, test, grade), grouped by day, with filters; clicking still goes through Toledo so items get marked as read
+- Smart sorting ("Slim indelen"): proposes groups by institution, semester, programme code or academic year, with a preview before anything moves
 - Dashboard in the right column: a local to-do list (Enter to add, optional due date, overdue and today highlighted) and "Binnenkort", the upcoming deadlines and tests from Toledo's updates feed, each one click away from becoming a task
 - Light, dark or system appearance and your own accent colour, applied to the organizer, the dashboard and the Toledo theme
 - Keyboard shortcuts: `/` focuses search, `n` starts a new task
 - Optional Toledo theme: a calmer look for the whole Toledo portal (top bar, menus, panels, updates, course list) that matches the organizer. Turn it off under Settings > Appearance (Instellingen > Uiterlijk).
 
 ![Dark mode with a custom accent](docs/screenshot-dark.png)
+
+![Smart sorting](docs/screenshot-autosort.png)
 
 ![Edit mode](docs/screenshot-edit-mode.png)
 
@@ -64,7 +70,7 @@ The extension is plain JavaScript with no build step. To try the UI without Tole
 python -m http.server
 ```
 
-Then open http://localhost:8000/test/demo.html (add `?edit=1` for edit mode, `?settings=1` for the settings dialog). `test/ui-fixture.html` runs a few UI checks, and `test/toledo-sim.html` simulates a slow-loading Toledo page and reports how quickly the organizer appears.
+Then open http://localhost:8000/test/demo.html (add `?edit=1` for edit mode, `?settings=1` for the settings dialog, `?autosort=1` for smart sorting, `?dark=1` for dark mode). `test/ui-fixture.html` runs a few UI checks, and `test/toledo-sim.html` simulates a slow-loading Toledo page and reports how quickly the organizer appears.
 
 ## License
 
