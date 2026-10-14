@@ -13,6 +13,8 @@
   let lastSignature = "";
   let lastUrl = location.href;
   let observer;
+  let dashboard;
+  let darkQuery = null;
 
   function signatureFor(items) {
     return items
@@ -23,14 +25,66 @@
 
   async function persist(nextState) {
     state = nextState;
-    applyTheme();
+    applyAppearance();
     await NS.storage.saveState(state);
     applySourceVisibility();
+    dashboard?.render();
   }
 
-  // styles/toledo-theme.css is scoped to html:not(.to-theme-off).
-  function applyTheme() {
-    document.documentElement.classList.toggle("to-theme-off", state?.themeEnabled === false);
+  // styles/toledo-theme.css is scoped to html:not(.to-theme-off); dark mode and accent are driven from here.
+  function applyAppearance() {
+    const root = document.documentElement;
+    root.classList.toggle("to-theme-off", state?.themeEnabled === false);
+    const mode = state?.appearance?.mode || "system";
+    if (!darkQuery && window.matchMedia) {
+      darkQuery = window.matchMedia("(prefers-color-scheme: dark)");
+      darkQuery.addEventListener?.("change", () => applyAppearance());
+    }
+    const dark = mode === "dark" || (mode === "system" && Boolean(darkQuery?.matches));
+    root.classList.toggle("to-dark", dark);
+    root.style.setProperty("--to-user-accent", state?.appearance?.accent || "#00627f");
+    root.classList.toggle("to-hide-info", Boolean(state?.dashboard?.hideInfoPanel));
+  }
+
+  // Dashboard persistence: merge a patch into state, save, and refresh both dashboard and organizer UI.
+  async function dashboardSetState(patch) {
+    const next = { ...state, ...patch, search: ui?.state?.search || "" };
+    if (ui) ui.state = next;
+    await persist(next); // also re-renders the dashboard
+    ui?.render();
+  }
+
+  function dashboardContainer() {
+    return document.querySelector(".tol-events-widget")?.parentElement || null;
+  }
+
+  function ensureDashboard() {
+    if (!state) return;
+    const container = dashboardContainer();
+    if (!container) return;
+    if (!dashboard) {
+      dashboard = new NS.dashboard.Dashboard({
+        getState: () => state,
+        setState: dashboardSetState,
+        getCourses: () => courses
+      });
+    }
+    if (!document.getElementById("to-dashboard") || container.firstElementChild?.id !== "to-dashboard") dashboard.mount(container);
+    else dashboard.refreshIfChanged();
+  }
+
+  function isTypingTarget(target) {
+    return Boolean(target?.closest?.('input, textarea, select, [contenteditable=""], [contenteditable="true"]')) || Boolean(target?.isContentEditable);
+  }
+
+  function onShortcut(event) {
+    if (event.ctrlKey || event.metaKey || event.altKey || event.shiftKey || isTypingTarget(event.target)) return;
+    let node = null;
+    if (event.key === "/") node = document.querySelector('#toledo-organizer-root [data-role="search"]');
+    else if (event.key === "n") node = document.querySelector('#to-dashboard [data-role="task-text"]');
+    if (!node) return;
+    event.preventDefault();
+    node.focus();
   }
 
   function ensureCourseDefaults() {
@@ -129,6 +183,8 @@
   async function scan({ force = false } = {}) {
     lastUrl = location.href;
 
+    ensureDashboard();
+
     // Cheap short-circuit: no enrollment items on this page -> nothing to organise, nothing hidden.
     if (!document.querySelector(ENROLLMENT_SELECTOR)) {
       if (lastSignature || enrollments.length || document.querySelector(".to-source-hidden")) resetWhenNoEnrollments();
@@ -183,7 +239,7 @@
 
   function isRelevantMutation(mutation) {
     const target = mutation.target.nodeType === Node.ELEMENT_NODE ? mutation.target : mutation.target.parentElement;
-    if (!target || target.closest?.(`#${ROOT_ID}`)) return false;
+    if (!target || target.closest?.(`#${ROOT_ID}, #to-dashboard`)) return false;
     // Class/href changes only matter on enrollment items.
     if (mutation.type === "attributes") return Boolean(target.closest?.(".enrollment-list-item, .tol-enrollment-container"));
     return true;
@@ -191,8 +247,9 @@
 
   async function init() {
     state = await NS.storage.loadState();
-    applyTheme();
+    applyAppearance();
     prehide();
+    document.addEventListener("keydown", onShortcut);
 
     // Observe before the first scan so nothing Toledo renders in between is missed.
     observer = new MutationObserver((mutations) => {

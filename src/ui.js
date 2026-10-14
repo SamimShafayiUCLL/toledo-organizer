@@ -691,14 +691,8 @@
           this.settingsCard("Debug", "Exporteer alleen de vakken die momenteel op Toledo gedetecteerd worden.", [
             button("Exporteer gedetecteerde vakken", "export-detected")
           ]),
-          this.settingsCard("Uiterlijk", "Geef heel Toledo een rustiger, moderner uiterlijk dat bij de organizer past.", [
-            button(
-              this.state.themeEnabled === false ? "Toledo-thema aanzetten" : "Toledo-thema uitzetten",
-              "toggle-theme",
-              "",
-              this.state.themeEnabled === false ? "primary" : ""
-            )
-          ]),
+          this.settingsCard("Uiterlijk", "Kies een modus en accentkleur, en geef heel Toledo een rustiger, moderner uiterlijk.", this.appearanceControls()),
+          this.settingsCard("Dashboard", "Kies wat er in de rechterkolom van Toledo getoond wordt.", this.dashboardControls()),
           this.settingsCard("Reset", "Verwijder alleen Toledo Organizer-instellingen. Toledo zelf wordt niet aangepast.", [
             button("Reset Organizer", "reset-organizer", "", "danger")
           ])
@@ -715,6 +709,78 @@
       overlay.append(modal);
       setTimeout(() => modal.querySelector('[data-action="close-settings"]')?.focus(), 0);
       return overlay;
+    }
+
+    appearanceControls() {
+      const mode = this.state.appearance?.mode || "system";
+      const accent = (this.state.appearance?.accent || "").toLowerCase();
+      const modes = [["system", "Systeem"], ["light", "Licht"], ["dark", "Donker"]];
+      const presets = [
+        ["#00627f", "Toledo-teal"],
+        ["#2563eb", "Blauw"],
+        ["#4f46e5", "Indigo"],
+        ["#7c3aed", "Paars"],
+        ["#db2777", "Roze"],
+        ["#ea580c", "Oranje"],
+        ["#16a34a", "Groen"],
+        ["#475467", "Grafiet"]
+      ];
+      const modeSwitch = el(
+        "div",
+        { class: "to-segment to-mode-switch" },
+        modes.map(([value, label]) => {
+          const node = button(label, "appearance-mode", "", mode === value ? "active" : "");
+          node.dataset.value = value;
+          return node;
+        })
+      );
+      const swatches = el("div", { class: "to-swatches" });
+      for (const [value, name] of presets) {
+        swatches.append(
+          el("button", {
+            class: `to-swatch${accent === value ? " active" : ""}`,
+            type: "button",
+            "data-action": "appearance-accent",
+            "data-value": value,
+            title: name,
+            "aria-label": name,
+            style: `--swatch:${value}`
+          })
+        );
+      }
+      swatches.append(
+        el("input", {
+          class: "to-swatch-custom",
+          type: "color",
+          value: validColor(accent) ? accent : "#00627f",
+          "data-role": "accent-custom",
+          title: "Eigen kleur"
+        })
+      );
+      return [
+        modeSwitch,
+        swatches,
+        button(
+          this.state.themeEnabled === false ? "Toledo-thema aanzetten" : "Toledo-thema uitzetten",
+          "toggle-theme",
+          "",
+          this.state.themeEnabled === false ? "primary" : ""
+        )
+      ];
+    }
+
+    dashboardControls() {
+      const dash = this.state.dashboard || {};
+      const box = (role, label, checked) => {
+        const input = el("input", { type: "checkbox", "data-role": role });
+        input.checked = Boolean(checked);
+        return el("label", { class: "to-checkbox" }, [input, el("span", { text: label })]);
+      };
+      return [
+        box("dash-tasks", "Taken tonen", dash.showTasks !== false),
+        box("dash-upcoming", "Binnenkort tonen", dash.showUpcoming !== false),
+        box("dash-hide-info", "Informatiepaneel van Toledo verbergen", dash.hideInfoPanel)
+      ];
     }
 
     settingsCard(title, description, actions) {
@@ -767,6 +833,12 @@
       if (action === "export-detected") return this.exportDetected();
       if (action === "import-settings") return this.root.querySelector('[data-role="import-file"]')?.click();
       if (action === "reset-organizer") return this.resetOrganizer();
+      if (action === "appearance-mode") {
+        return this.patchState({ appearance: { ...this.state.appearance, mode: actionEl.dataset.value } });
+      }
+      if (action === "appearance-accent") {
+        return this.patchState({ appearance: { ...this.state.appearance, accent: actionEl.dataset.value } });
+      }
       if (action === "toggle-theme") return this.patchState({ themeEnabled: this.state.themeEnabled === false });
     }
 
@@ -782,6 +854,15 @@
     async handleChange(event) {
       if (event.target.matches('[data-role="show-hidden"]')) {
         return this.patchState({ showHidden: event.target.checked });
+      }
+      if (event.target.matches('[data-role="accent-custom"]')) {
+        return this.patchState({ appearance: { ...this.state.appearance, accent: event.target.value } });
+      }
+      const dashKeys = { "dash-tasks": "showTasks", "dash-upcoming": "showUpcoming", "dash-hide-info": "hideInfoPanel" };
+      for (const [role, key] of Object.entries(dashKeys)) {
+        if (event.target.matches(`[data-role="${role}"]`)) {
+          return this.patchState({ dashboard: { ...this.state.dashboard, [key]: event.target.checked } });
+        }
       }
       if (event.target.matches('[data-role="course-sort"]')) {
         return this.patchState({ courseSort: event.target.value });
@@ -1373,5 +1454,5 @@
     }
   }
 
-  NS.ui = { OrganizerUI, downloadJson };
+  NS.ui = { OrganizerUI, downloadJson, icon };
 })();

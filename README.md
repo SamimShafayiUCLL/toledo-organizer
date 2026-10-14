@@ -23,7 +23,12 @@ A browser extension for `https://toledo.kuleuven.be/` that shows your Toledo cou
 - Edit mode: management controls, colors and renaming stay hidden until you turn it on
 - Import and export settings as JSON
 - Toggle between the Organizer and the original Toledo view
+- Dashboard in the right column: a local to-do list (Enter to add, optional due date, overdue and today highlighted) and "Binnenkort", the upcoming deadlines and tests from Toledo's updates feed, each one click away from becoming a task
+- Light, dark or system appearance and your own accent colour, applied to the organizer, the dashboard and the Toledo theme
+- Keyboard shortcuts: `/` focuses search, `n` starts a new task
 - Optional Toledo theme: a calmer look for the whole Toledo portal (top bar, menus, panels, updates, course list) that matches the organizer. Turn it off under Settings > Appearance (Instellingen > Uiterlijk).
+
+![Dark mode with a custom accent](docs/screenshot-dark.png)
 
 ![Edit mode](docs/screenshot-edit-mode.png)
 
@@ -47,7 +52,7 @@ Extension storage is tied to the extension ID, and for unpacked extensions that 
 
 No data leaves your browser. The extension uses these permissions:
 
-- `storage`: saves your settings locally
+- `storage`: saves your settings and tasks locally
 - `downloads`: JSON export only
 - Host access only to `https://toledo.kuleuven.be/*`
 
