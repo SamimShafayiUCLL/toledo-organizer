@@ -2,35 +2,32 @@
 
 # Toledo Organizer
 
-A browser extension for `https://toledo.kuleuven.be/` that shows your Toledo courses in your own structure, without removing the original Toledo list.
+**Your Toledo home page, organised.** A free browser extension for [Toledo](https://toledo.kuleuven.be) (KU Leuven and UCLL) that sorts your courses into your own groups, merges old academic years, and turns the home page into a calm overview of what's due.
+
+*Nederlands: [zie verder](#nederlands).*
 
 ![Toledo Organizer](docs/screenshot-organizer.png)
 
-> **Disclaimer:** This is an unofficial project. It is not affiliated with or endorsed by KU Leuven or Anthology/Blackboard. It depends on Toledo's page structure and may break when Toledo changes.
+> **Unofficial.** Made by a student, not affiliated with or endorsed by KU Leuven, UCLL or Anthology (Blackboard). It reads the Toledo page you already see and may need an update when Toledo changes.
 
-## Features
+## What it does
 
-- Custom groups and subgroups, up to 3 levels deep
-- Drag and drop courses and groups into other groups
-- Merge academic years of the same course into one card, with a default version
-- Custom names for courses and versions (e.g. "Full course" / "Current year")
-- Colors for groups and courses
-- Sorting: own order, A-Z or Z-A
-- Hide and unhide courses
-- Search
-- New courses appear under "Not assigned"
-- Recognition of KU Leuven and UCLL courses via the Toledo ID
-- Edit mode: management controls, colors and renaming stay hidden until you turn it on
-- Import and export settings as JSON
-- Toggle between the Organizer and the original Toledo view
-- Its own page layout: wider page, your courses on the left and a sticky sidebar on the right
-- A greeting header with today's numbers: tasks due today, deadlines this week, unread updates
-- A rewritten updates feed: clearer wording per type (new content, announcement, deadline, test, grade), grouped by day, with filters; clicking still goes through Toledo so items get marked as read
-- Smart sorting ("Slim indelen"): proposes groups by institution, semester, programme code or academic year, with a preview before anything moves
-- Dashboard in the right column: a local to-do list (Enter to add, optional due date, overdue and today highlighted) and "Binnenkort", the upcoming deadlines and tests from Toledo's updates feed, each one click away from becoming a task
-- Light, dark or system appearance and your own accent colour, applied to the organizer, the dashboard and the Toledo theme
-- Keyboard shortcuts: `/` focuses search, `n` starts a new task
-- Optional Toledo theme: a calmer look for the whole Toledo portal (top bar, menus, panels, updates, course list) that matches the organizer. Turn it off under Settings > Appearance (Instellingen > Uiterlijk).
+**Your courses, your structure**
+- Groups and subgroups (up to 3 levels), drag and drop for courses and groups
+- One card per course: all academic years merged, with a default version that opens on click
+- Your own names and colours for courses and groups; hide courses you don't need
+- **Slim indelen** (smart sorting): proposes groups by institution, semester, programme code or academic year, with a preview before anything moves
+- Search with `/`, sorting, and a one-click switch back to the original Toledo list
+
+**A home page that helps you plan**
+- A greeting with today's numbers: tasks due today, deadlines this week, unread updates
+- **Taken**: a to-do list right on Toledo, with due dates, overdue and today highlighted (`n` adds a task)
+- **Binnenkort**: upcoming deadlines and tests from your Toledo updates, one click away from becoming a task
+- **Updates**: Toledo's notifications rewritten (new content, announcement, deadline, test, grade), grouped by day and filterable; opening one still marks it as read in Toledo
+
+**A calmer Toledo**
+- A cleaner look for the whole Toledo portal, a wider layout with a sidebar that stays in view
+- Light, dark or system mode, and your own accent colour
 
 ![Dark mode with a custom accent](docs/screenshot-dark.png)
 
@@ -38,122 +35,58 @@ A browser extension for `https://toledo.kuleuven.be/` that shows your Toledo cou
 
 ![Edit mode](docs/screenshot-edit-mode.png)
 
-## Installation
+## Install
 
-1. Download the repository (Code > Download ZIP) or clone it, and extract it to a folder that will stay in place.
-2. Open `edge://extensions` or `chrome://extensions`.
-3. Enable **Developer mode**.
-4. Click **Load unpacked** and select the folder that contains `manifest.json`.
-5. Open https://toledo.kuleuven.be.
+1. Download `toledo-organizer-v0.5.0.zip` from the [latest release](../../releases/latest) and unzip it to a folder you'll keep (for example `Documents\toledo-organizer`).
+2. In Microsoft Edge, open `edge://extensions`. (Brave: `brave://extensions`, Opera: `opera://extensions`.)
+3. Turn on **Developer mode**.
+4. Click **Load unpacked** and pick the unzipped folder (the one with `manifest.json` in it).
+5. Open [toledo.kuleuven.be](https://toledo.kuleuven.be). Your courses start under **Niet ingedeeld**; try **Slim indelen** for a first structure.
 
-### Updating
-
-Extension storage is tied to the extension ID, and for unpacked extensions that ID depends on the folder path. Export your settings first as a backup, then:
-
-1. Replace the files in the **same** folder with the new version.
-2. Go to the extensions page and click **Reload**.
-3. Refresh Toledo.
+**Updating:** export your settings first (Settings > Back-up), unzip the new version over the **same** folder, click **Reload** on the extensions page and refresh Toledo. Your settings belong to that folder, so keep using the same one.
 
 ## Privacy
 
-No data leaves your browser. The extension uses these permissions:
+Everything stays in your browser. The extension has no server, no analytics and no account, never sees your password, and only runs on `toledo.kuleuven.be`. Your groups, colours and tasks are stored locally and can be exported as a JSON file. Details: [PRIVACY.md](PRIVACY.md).
 
-- `storage`: saves your settings and tasks locally
-- `downloads`: JSON export only
-- Host access only to `https://toledo.kuleuven.be/*`
+## Feedback and contributing
 
-## Development
+Found a bug or have an idea? [Open an issue](../../issues). Pull requests are welcome.
 
-The extension is plain JavaScript with no build step. To try the UI without Toledo, run a local server from the repository root:
-
-```
-python -m http.server
-```
-
-Then open http://localhost:8000/test/demo.html (add `?edit=1` for edit mode, `?settings=1` for the settings dialog, `?autosort=1` for smart sorting, `?dark=1` for dark mode). `test/ui-fixture.html` runs a few UI checks, and `test/toledo-sim.html` simulates a slow-loading Toledo page and reports how quickly the organizer appears.
+The extension is plain JavaScript with no build step. To work on the UI without Toledo, run `python -m http.server` in the repository root and open `http://localhost:8000/test/demo.html` (add `?edit=1`, `?settings=1`, `?autosort=1` or `?dark=1`). `test/ui-fixture.html` runs a few UI checks and `test/toledo-sim.html` measures how fast the organizer appears on a slow page.
 
 ## License
 
-MIT. See [LICENSE](LICENSE).
+MIT, see [LICENSE](LICENSE).
 
 ---
 
 ## Nederlands
 
+**Je Toledo-startpagina, eindelijk overzichtelijk.** Een gratis browserextensie voor [Toledo](https://toledo.kuleuven.be) (KU Leuven en UCLL) die je vakken in eigen groepen zet, oude academiejaren samenvoegt en de startpagina een rustig overzicht geeft van wat eraan komt.
 
-Een lokale Edge/Chromium-extensie voor `https://toledo.kuleuven.be/` die Toledo-vakken in een eigen structuur toont zonder de originele Toledo-lijst te verwijderen.
+> **Niet officieel.** Gemaakt door een student, niet verbonden aan of goedgekeurd door KU Leuven, UCLL of Anthology (Blackboard). De extensie leest de Toledo-pagina die je zelf al ziet en kan een update nodig hebben als Toledo verandert.
 
-### Nieuw in v0.2.0
+### Wat het doet
 
-- **Export hersteld:** JSON-downloads lopen nu via een Manifest V3 background service worker en `chrome.downloads`.
-- **Instellingenmodal hersteld:** de ×-knop werkt, Escape sluit het venster en het venster blijft niet meer open na refresh.
-- **Bewerkmodus (✎):** beheerknoppen, kleuren, drag-and-drop en hernoemen zijn standaard verborgen voor een rustigere dagelijkse weergave.
-- **Custom kleuren:** geef groepen én individuele vakken een kleur. De kleur wordt subtiel als linkeraccent gebruikt.
-- **Sorteren:** Eigen volgorde, Alfabetisch A–Z of Alfabetisch Z–A.
-- **Eigen volgorde verbeteren:** in Bewerkmodus kun je vakken omhoog/omlaag zetten of ze op een ander vak slepen.
-- **Eigen vaknaam:** vakken kunnen naast versies en groepen ook een eigen displaynaam krijgen.
-- **Duidelijkere beschikbaarheid:** wanneer de nieuwste versie nog niet beschikbaar is, staat dit zichtbaar op de kaart, inclusief instelling (bv. KU Leuven).
-- **Verbeterde versie-weergave:** een onbeschikbare versie vermeldt expliciet dat Toledo ze momenteel als niet beschikbaar markeert.
-- Het verborgen JSON-importveld is nu ook hard verborgen zodat Toledo-CSS het niet zichtbaar kan maken.
+- **Eigen indeling**: groepen en subgroepen (tot 3 niveaus), slepen en neerzetten, eigen namen en kleuren, vakken verbergen.
+- **Eén kaart per vak**: alle academiejaren samen, met een standaardversie die opent als je klikt.
+- **Slim indelen**: stelt een indeling voor per instelling, semester, opleidingscode of academiejaar, met een voorbeeld vooraf.
+- **Taken**: een takenlijst op Toledo zelf, met deadlines; te laat en vandaag vallen op (sneltoets `n`).
+- **Binnenkort**: komende deadlines en toetsen uit je Toledo-updates, met één klik een taak.
+- **Updates**: Toledo-meldingen duidelijker verwoord, per dag gegroepeerd en te filteren; openen markeert ze nog steeds als gelezen.
+- **Rustiger Toledo**: een strakker uiterlijk, bredere pagina, licht/donker/systeem en je eigen accentkleur.
 
-### Bestaande functies
+### Installeren
 
-- Schakelaar **Organizer / Originele Toledo**.
-- Zelf groepen en subgroepen maken, maximaal **3 niveaus**.
-- Vakken naar groepen verslepen.
-- Groepen naar andere groepen verslepen.
-- UCLL en KU Leuven herkennen via de Toledo-ID.
-- Academiejaren van hetzelfde vak automatisch combineren, bv.:
-  - `ULTRA-B-KUL-E0I54a-2526`
-  - `ULTRA-B-KUL-E0I54a-2627`
-  - worden samen `KUL:E0I54a`.
-- Gecombineerde vakkaart uitklappen om academiejaren te zien.
-- Eén academiejaar als standaardversie instellen.
-- De titel van het vak opent de standaardversie.
-- Eigen naam per versie, bv. `Volledige cursus` / `Huidig jaar`.
-- Nieuwe vakken verschijnen onder **Niet ingedeeld**.
-- Communities worden bij eerste detectie onder **Overig** geplaatst.
-- Vakken verbergen en terug zichtbaar maken.
-- Zoeken.
-- Instellingen importeren/exporteren als JSON.
-- Gedetecteerde Toledo-vakken exporteren als debug-JSON.
-- Alles wordt lokaal bewaard via `chrome.storage.local`.
+1. Download `toledo-organizer-v0.5.0.zip` bij de [laatste release](../../releases/latest) en pak het uit in een map die je bijhoudt.
+2. Open in Microsoft Edge `edge://extensions` (Brave: `brave://extensions`, Opera: `opera://extensions`).
+3. Zet **Ontwikkelaarsmodus** aan.
+4. Klik **Uitgepakte extensie laden** en kies de uitgepakte map (met `manifest.json` erin).
+5. Open [toledo.kuleuven.be](https://toledo.kuleuven.be). Je vakken staan eerst onder **Niet ingedeeld**; probeer **Slim indelen** voor een eerste indeling.
 
-### Updaten van v0.1 naar v0.2 zonder je indeling kwijt te raken
-
-`chrome.storage.local` hoort bij de **extensie-ID**. Bij een unpacked extensie kan die ID veranderen wanneer je de extensie vanuit een andere map laadt. Omdat export in v0.1 bij jou niet werkte, is de veiligste update daarom:
-
-1. Zoek de **bestaande map** die je bij v0.1 via **Load unpacked** hebt geladen.
-2. Maak voor de zekerheid eerst een gewone kopie van die map.
-3. Pak `toledo-organizer-v0.2.0.zip` uit.
-4. Kopieer de nieuwe bestanden **in dezelfde bestaande v0.1-map** en laat de oude bestanden vervangen. Houd dus exact hetzelfde mappad voor de extensie.
-5. Ga naar `edge://extensions` en klik bij Toledo Organizer op **Reload / Opnieuw laden**.
-6. Vernieuw Toledo.
-
-Verwijder v0.1 voorlopig niet uit Edge en laad v0.2 niet vanuit een compleet andere map als je je huidige groepen wilt behouden. Zodra v0.2 draait, kun je via **Instellingen → Exporteer instellingen** meteen een JSON-back-up maken.
-
-### Dagelijks gebruik
-
-Laat **Bewerkmodus** uit voor een rustige lijst. Klik bovenaan op **✎** wanneer je groepen wilt aanpassen, vakken wilt verplaatsen, kleuren wilt kiezen of namen wilt wijzigen.
-
-Bijvoorbeeld:
-
-- Geneeskunde
-  - 1ste fase
-    - 1ste semester
-    - 2de semester
-- MLT / Biomedische Laboratoriumtechnologie
-  - 1ste fase
-  - 2de fase
-
-### Beschikbaarheid
-
-Een melding zoals:
-
-`2026-2027 is niet beschikbaar op Toledo (KU Leuven)`
-
-betekent alleen dat Toledo die specifieke cursusversie op dat moment als niet beschikbaar rendert (`enrollment-unavailable` / geen klikbare cursuslink). De extensie doet geen uitspraak over de reden waarom.
+**Updaten:** exporteer eerst je instellingen (Instellingen > Back-up), pak de nieuwe versie uit over **dezelfde** map, klik **Opnieuw laden** bij de extensies en vernieuw Toledo.
 
 ### Privacy
 
-De extensie stuurt geen Toledo-data naar een server en vraagt niet om je wachtwoord. De permissies zijn beperkt tot Toledo, lokale opslag en lokale JSON-downloads.
+Alles blijft in je browser: geen server, geen tracking, geen account, nooit je wachtwoord, en de extensie werkt alleen op `toledo.kuleuven.be`. Zie [PRIVACY.md](PRIVACY.md).

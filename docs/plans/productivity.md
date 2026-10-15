@@ -20,7 +20,7 @@ Goal: make the Toledo home page the place to plan study work, not just a course 
 ## Storage
 `tasks[]` `{ id, text, done, due: "YYYY-MM-DD"|null, tag: string|null, createdAt, doneAt }`,
 `appearance { mode, accent }`, `dashboard { showTasks, showUpcoming, hideInfoPanel }`.
-All local (`chrome.storage.local`), included in settings export/import, validated on import.
+All local (extension storage), included in settings export/import, validated on import.
 
 ## Out of scope
 Blackboard Ultra course pages, syncing tasks to other devices, notifications.
