@@ -30,7 +30,7 @@ None. No data is sold, shared, or transferred to anyone.
 
 ## Contact
 
-Questions or concerns: open an issue at https://github.com/Sozially/toledo-organizer/issues.
+Questions or concerns: open an issue at https://github.com/SamimShafayiUCLL/toledo-organizer/issues.
 
 ---
 
