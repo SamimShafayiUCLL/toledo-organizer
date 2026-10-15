@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.6.0 — 2026-10-16
+
+- Engelse versie: alle teksten bestaan nu in het Nederlands en het Engels. De taal volgt automatisch je Toledo/browser, of kies zelf onder Instellingen > Uiterlijk.
+- Updates en deadlines begrijpen ook een Engelstalige Toledo ("Today", "Yesterday").
+- Groepen die Slim indelen aanmaakt krijgen namen in de gekozen taal.
+
 ## 0.5.0 — 2026-10-14
 
 - Eigen pagina-indeling: bredere pagina, vakken links en een vaste zijbalk rechts die meescrolt.

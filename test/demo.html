@@ -24,6 +24,7 @@ window.chrome = {
   runtime: { sendMessage: (_msg, cb) => cb({ ok: true }) }
 };
 </script>
+<script src="../src/i18n.js"></script>
 <script src="../src/storage.js"></script>
 <script src="../src/matcher.js"></script>
 <script src="../src/ui.js"></script>
@@ -116,6 +117,9 @@ window.chrome = {
     { id: "t3", text: "Boeken terugbrengen", done: true, due: null, tag: null, createdAt: 3, doneAt: 4 }
   ];
   state.editMode = params.get("edit") === "1";
+  const langParam = params.get("lang");
+  if (langParam === "nl" || langParam === "en") state.language = langParam;
+  NS.i18n.setLanguage(state.language);
   state.groups = [
     { id: "med", name: "Geneeskunde", parentId: null, order: 0, collapsed: false, color: "#7c5cdb" },
     { id: "f1", name: "1ste fase", parentId: "med", order: 0, collapsed: false, color: null },
@@ -139,12 +143,12 @@ window.chrome = {
   let current = NS.storage.validateImportedState(state);
   const dash = new NS.dashboard.Dashboard({
     getState: () => current,
-    setState: async (patch) => { current = { ...current, ...patch }; ui.state = current; dash.render(); ui.render(); },
+    setState: async (patch) => { current = { ...current, ...patch }; NS.i18n.setLanguage(current.language); ui.state = current; dash.render(); ui.render(); },
     getCourses: () => courses
   });
   const ui = new NS.ui.OrganizerUI({
     state: current,
-    onStateChange: async (next) => { current = next; dash.render(); },
+    onStateChange: async (next) => { current = next; NS.i18n.setLanguage(current.language); dash.render(); },
     getCourses: () => courses,
     getEnrollments: () => enrollments
   });

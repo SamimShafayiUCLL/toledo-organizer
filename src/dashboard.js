@@ -1,6 +1,8 @@
 (() => {
   const NS = (window.ToledoOrganizer = window.ToledoOrganizer || {});
   const DASH_ID = "to-dashboard";
+  const tr = (key, vars) => NS.i18n.t(key, vars);
+  const trPlural = (key, n, vars) => NS.i18n.plural(key, n, vars);
   const MAX_UPCOMING = 6;
   const TRUSTED_HOST = /(^|\.)(kuleuven\.be|kuleuven\.cloud|ucll\.be)$/i;
   const WEEKDAYS = ["zo", "ma", "di", "wo", "do", "vr", "za"];
@@ -57,22 +59,33 @@
   }
   const dayDiff = (a, b) => Math.round((a - b) / 86400000);
 
+  // "5 mrt" / "5 Mar" (day + short month), optionally with a short weekday in front.
+  function shortDate(date, withWeekday) {
+    const locale = NS.i18n.locale();
+    if (locale.startsWith("nl")) {
+      const short = `${date.getDate()} ${MONTHS[date.getMonth()]}`;
+      return withWeekday ? `${WEEKDAYS[date.getDay()]} ${short}` : short;
+    }
+    const opts = withWeekday ? { weekday: "short", day: "numeric", month: "short" } : { day: "numeric", month: "short" };
+    return date.toLocaleDateString(locale, opts);
+  }
+
   function dueLabel(iso, today = startOfToday()) {
     const date = fromISO(iso);
     if (!date) return "";
     const diff = dayDiff(date, today);
-    if (diff === 0) return "Vandaag";
-    if (diff === 1) return "Morgen";
-    if (diff === -1) return "Gisteren";
-    const short = `${date.getDate()} ${MONTHS[date.getMonth()]}`;
-    if (diff >= 2 && diff <= 6) return `${WEEKDAYS[date.getDay()]} ${short}`;
+    if (diff === 0) return tr("due.today");
+    if (diff === 1) return tr("due.tomorrow");
+    if (diff === -1) return tr("due.yesterday");
+    if (diff >= 2 && diff <= 6) return shortDate(date, true);
+    const short = shortDate(date, false);
     return date.getFullYear() === today.getFullYear() ? short : `${short} ${date.getFullYear()}`;
   }
 
   function relativeLabel(diff) {
-    if (diff <= 0) return "vandaag";
-    if (diff === 1) return "morgen";
-    return `over ${diff} dagen`;
+    if (diff <= 0) return tr("rel.today");
+    if (diff === 1) return tr("rel.tomorrow");
+    return tr("rel.inDays", { n: diff });
   }
 
   function newId() {
@@ -114,23 +127,8 @@
   // ---- parsed copy of Toledo's whole updates feed (can be 500+ items; parsed only when it changes) ----
   const KINDS = ["notifications-content", "announcement", "due", "test", "gradebook", "course"];
   const KIND_NAMES = { "notifications-content": "content" };
-  const KIND_LABELS = {
-    content: "Nieuwe inhoud",
-    announcement: "Mededeling",
-    due: "Deadline",
-    test: "Toets",
-    gradebook: "Nieuw cijfer",
-    course: "Vakupdate",
-    other: "Update"
-  };
   const KIND_ICONS = { content: "file", announcement: "megaphone", due: "clock", test: "checkSquare", gradebook: "award", course: "book", other: "sparkle" };
-  const FEED_FILTERS = [
-    ["all", "Alles"],
-    ["content", "Inhoud"],
-    ["announcement", "Mededelingen"],
-    ["deadline", "Toetsen & deadlines"],
-    ["grade", "Cijfers"]
-  ];
+  const FEED_FILTERS = ["all", "content", "announcement", "deadline", "grade"];
   const FEED_PAGE = 25;
   const clean = (text) => (text || "").replace(/\s+/g, " ").trim();
 
@@ -140,7 +138,7 @@
     return m ? m[1] : "other";
   }
 
-  // Returns { date, numeric } for "dd/mm/yyyy" or Dutch relative words, else null.
+  // Returns { date, numeric } for "dd/mm/yyyy" or relative words (Dutch or English), else null.
   function parseFeedDate(text, today) {
     const m = /(\d{1,2})\/(\d{1,2})\/(\d{4})/.exec(text);
     if (m) {
@@ -148,7 +146,7 @@
       return Number.isNaN(date.getTime()) ? null : { date, numeric: true };
     }
     const word = text.trim().toLowerCase();
-    const offset = { vandaag: 0, gisteren: -1, morgen: 1 }[word];
+    const offset = { vandaag: 0, gisteren: -1, morgen: 1, today: 0, yesterday: -1, tomorrow: 1 }[word];
     if (offset == null) return null;
     return { date: new Date(today.getFullYear(), today.getMonth(), today.getDate() + offset), numeric: false };
   }
@@ -209,16 +207,17 @@
 
   const upcomingSignature = (items) => `${toISO(startOfToday())}#${items.map((i) => `${i.title}|${i.iso}|${i.href || ""}|${i.color || ""}`).join(";")}`;
 
-  const greeting = (now = new Date()) => (now.getHours() < 12 ? "Goedemorgen" : now.getHours() < 18 ? "Goedemiddag" : "Goedenavond");
+  const greeting = (now = new Date()) =>
+    tr(now.getHours() < 12 ? "hero.greeting.morning" : now.getHours() < 18 ? "hero.greeting.afternoon" : "hero.greeting.evening");
 
   function feedTimeLabel(item, today) {
     if (!item.date) return item.dateText.toLowerCase();
     const diff = dayDiff(item.date, today);
-    if (diff === 0) return "vandaag";
-    if (diff === 1) return "morgen";
-    if (diff === -1) return "gisteren";
-    if (diff > 1) return `over ${diff} d`;
-    const short = `${item.date.getDate()} ${MONTHS[item.date.getMonth()]}`;
+    if (diff === 0) return tr("rel.today");
+    if (diff === 1) return tr("rel.tomorrow");
+    if (diff === -1) return tr("rel.yesterday");
+    if (diff > 1) return tr("rel.inD", { n: diff });
+    const short = shortDate(item.date, false);
     return item.date.getFullYear() === today.getFullYear() ? short : `${short} ${item.date.getFullYear()}`;
   }
 
@@ -369,7 +368,6 @@
       const taskCount = (state.tasks || []).filter((t) => !t.done && t.due && t.due <= todayISO).length;
       const weekCount = upcomingAll.filter((i) => dayDiff(i.date, today) <= 6).length;
       const unreadCount = feed.filter((i) => i.unread).length;
-      const plural = (n, one, many) => (n === 1 ? one : many);
       const stat = (kind, value, label) =>
         el("li", { class: "to-stat", "data-kind": kind, role: "button", tabindex: "0" }, [
           el("span", { class: "to-stat-value", text: String(value) }),
@@ -380,12 +378,12 @@
       hero.append(
         el("div", { class: "to-hero-text" }, [
           el("h1", { class: "to-hero-title", text: greeting() }),
-          el("p", { class: "to-hero-date", text: new Date().toLocaleDateString("nl-BE", { weekday: "long", day: "numeric", month: "long" }) })
+          el("p", { class: "to-hero-date", text: new Date().toLocaleDateString(NS.i18n.locale(), { weekday: "long", day: "numeric", month: "long" }) })
         ]),
         el("ul", { class: "to-hero-stats" }, [
-          stat("tasks", taskCount, plural(taskCount, "taak voor vandaag", "taken voor vandaag")),
-          stat("deadlines", weekCount, plural(weekCount, "deadline deze week", "deadlines deze week")),
-          stat("unread", unreadCount, plural(unreadCount, "ongelezen update", "ongelezen updates"))
+          stat("tasks", taskCount, trPlural("hero.tasks", taskCount)),
+          stat("deadlines", weekCount, trPlural("hero.deadlines", weekCount)),
+          stat("unread", unreadCount, trPlural("hero.unread", unreadCount))
         ])
       );
     }
@@ -497,26 +495,26 @@
       const hasDone = tasks.some((t) => t.done);
 
       const actions = el("div", { class: "to-dash-head-actions" });
-      if (hasDone) actions.append(el("button", { class: "to-btn ghost small", type: "button", "data-action": "clear-done", text: "Afgewerkte wissen" }));
+      if (hasDone) actions.append(el("button", { class: "to-btn ghost small", type: "button", "data-action": "clear-done", text: tr("tasks.clearDone") }));
 
       const form = el("form", { class: "to-task-form" }, [
         el("input", {
           class: "to-task-input",
           type: "text",
-          placeholder: "Nieuwe taak…",
+          placeholder: tr("tasks.placeholder"),
           maxlength: "300",
-          "aria-label": "Nieuwe taak",
+          "aria-label": tr("tasks.new"),
           "data-role": "task-text",
           autocomplete: "off",
           value: draft.text
         }),
-        el("input", { class: "to-task-date", type: "date", "data-role": "task-due", "aria-label": "Deadline", value: draft.due }),
-        el("button", { class: "to-btn primary small", type: "submit", text: "Toevoegen" })
+        el("input", { class: "to-task-date", type: "date", "data-role": "task-due", "aria-label": tr("tasks.deadline"), value: draft.due }),
+        el("button", { class: "to-btn primary small", type: "submit", text: tr("tasks.add") })
       ]);
 
       const card = el("div", { class: "to-dash-card to-tasks" }, [
         el("div", { class: "to-dash-head" }, [
-          el("h3", { class: "to-dash-title", text: "Taken" }),
+          el("h3", { class: "to-dash-title", text: tr("tasks.title") }),
           el("span", { class: "to-count", text: String(openCount) }),
           actions
         ]),
@@ -526,7 +524,7 @@
       const list = el("ul", { class: "to-task-list" });
       for (const task of tasks) list.append(this.renderTask(task, todayISO));
       card.append(list);
-      if (!tasks.length) card.append(el("div", { class: "to-dash-empty", text: "Nog geen taken. Typ hierboven en druk op Enter." }));
+      if (!tasks.length) card.append(el("div", { class: "to-dash-empty", text: tr("tasks.empty") }));
       return card;
     }
 
@@ -550,8 +548,8 @@
         class: "to-btn ghost tiny icon to-task-delete",
         type: "button",
         "data-action": "delete-task",
-        title: "Verwijder taak",
-        "aria-label": "Verwijder taak"
+        title: tr("tasks.delete"),
+        "aria-label": tr("tasks.delete")
       });
       del.append(iconNode("trash"));
       return el("li", { class: classes.join(" "), "data-task-id": task.id }, [
@@ -565,12 +563,12 @@
       const today = startOfToday();
       const card = el("div", { class: "to-dash-card to-upcoming" }, [
         el("div", { class: "to-dash-head" }, [
-          el("h3", { class: "to-dash-title", text: "Binnenkort" }),
+          el("h3", { class: "to-dash-title", text: tr("upcoming.title") }),
           el("span", { class: "to-count", text: String(items.length) })
         ])
       ]);
       if (!items.length) {
-        card.append(el("div", { class: "to-dash-empty", text: "Geen deadlines gevonden in je updates." }));
+        card.append(el("div", { class: "to-dash-empty", text: tr("upcoming.empty") }));
         return card;
       }
       const list = el("ul", { class: "to-upcoming-list" });
@@ -587,8 +585,8 @@
           class: "to-btn ghost tiny icon",
           type: "button",
           "data-action": "upcoming-to-task",
-          title: "Als taak toevoegen",
-          "aria-label": "Als taak toevoegen"
+          title: tr("upcoming.addTask"),
+          "aria-label": tr("upcoming.addTask")
         });
         add.append(iconNode("plus"));
         list.append(
@@ -628,16 +626,16 @@
       }
       planned.sort((a, b) => a.date - b.date);
       const sections = [
-        ["Gepland", planned],
-        ["Vandaag", todayItems],
-        ["Gisteren", yesterday],
-        ["Eerder", earlier]
+        [tr("feed.day.planned"), planned],
+        [tr("feed.day.today"), todayItems],
+        [tr("feed.day.yesterday"), yesterday],
+        [tr("feed.day.earlier"), earlier]
       ].filter(([, list]) => list.length);
 
       const chips = el(
         "div",
         { class: "to-feed-filters", role: "tablist" },
-        FEED_FILTERS.map(([value, label]) =>
+        FEED_FILTERS.map((value) =>
           el("button", {
             class: `to-chip${this.feedFilter === value ? " active" : ""}`,
             type: "button",
@@ -645,14 +643,14 @@
             "data-value": value,
             role: "tab",
             "aria-selected": this.feedFilter === value ? "true" : "false",
-            text: label
+            text: tr(`feed.filter.${value}`)
           })
         )
       );
 
       const card = el("div", { class: "to-dash-card to-feed" }, [
         el("div", { class: "to-dash-head" }, [
-          el("h3", { class: "to-dash-title", text: "Updates" }),
+          el("h3", { class: "to-dash-title", text: tr("feed.title") }),
           el("span", { class: `to-count${unreadCount ? "" : " is-zero"}`, text: String(unreadCount) })
         ]),
         chips
@@ -674,18 +672,18 @@
         }
       }
       card.append(list);
-      if (!filtered.length) card.append(el("div", { class: "to-dash-empty", text: "Geen updates in deze categorie." }));
+      if (!filtered.length) card.append(el("div", { class: "to-dash-empty", text: tr("feed.empty") }));
       if (total > this.feedShown.length) {
-        card.append(el("button", { class: "to-btn ghost small to-feed-more", type: "button", "data-action": "feed-more", text: "Meer tonen" }));
+        card.append(el("button", { class: "to-btn ghost small to-feed-more", type: "button", "data-action": "feed-more", text: tr("feed.more") }));
       }
       return card;
     }
 
     renderFeedItem(item, index, today) {
-      const kind = KIND_LABELS[item.kind] ? item.kind : "other";
+      const kind = KIND_ICONS[item.kind] ? item.kind : "other";
       const iconEl = el("span", { class: "to-feed-icon", "data-kind": kind, style: item.color ? `--to-item-color:${item.color}` : null });
       iconEl.append(iconNode(KIND_ICONS[kind]));
-      const meta = [KIND_LABELS[kind], feedCourseName(item.course), item.author].filter(Boolean).join(" · ");
+      const meta = [tr(`feed.kind.${kind}`), feedCourseName(item.course), item.author].filter(Boolean).join(" · ");
       return el("button", { class: `to-feed-item${item.unread ? " is-unread" : ""}`, type: "button", "data-feed-index": String(index) }, [
         iconEl,
         el("span", { class: "to-feed-main" }, [
