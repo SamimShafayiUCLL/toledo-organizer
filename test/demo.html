@@ -33,6 +33,9 @@ window.chrome = {
 (async () => {
   const NS = window.ToledoOrganizer;
   const params = new URLSearchParams(location.search);
+  // English sample content for ?lang=en screenshots (the interface itself is translated by src/i18n.js).
+  const DEMO_EN = {"Tussentijdse toets": "Midterm quiz", "Volledige cursus": "Full course", "Anatomie II: theorie": "Anatomy II: theory", "Fysiologie I": "Physiology I", "Biochemie": "Biochemistry", "Histologie": "Histology", "Klinische chemie 1": "Clinical chemistry 1", "Hematologie": "Haematology", "Medische statistiek": "Medical statistics", "Pathologie": "Pathology", "Farmacologie": "Pharmacology", "Immunologie": "Immunology", "Microbiologie": "Microbiology", "Parasitologie": "Parasitology", "Test hoofdstuk 4": "Quiz chapter 4", "Biochemie [QM1374]": "Biochemistry [QM1374]", "Indienen verslag labo": "Submit lab report", "Mondeling examen": "Oral exam", "Resultaat labo 1": "Lab 1 result", "Slides week 3": "Slides week 3", "Herinnering: inschrijven voor practicum": "Reminder: sign up for the practical", "Nieuwe cursusversie beschikbaar": "New course version available", "Punten tussentijdse toets": "Midterm quiz grades", "Oefeningenbundel": "Exercise booklet", "Welkom bij het vak": "Welcome to the course", "Docent Naam": "Lecturer", "Samenvatting anatomie afwerken": "Finish anatomy summary", "Anatomie II": "Anatomy II", "Labo-verslag nalezen": "Proofread lab report", "Boeken terugbrengen": "Return library books", "Geneeskunde": "Medicine", "1ste fase": "Year 1", "1ste semester": "Semester 1", "2de semester": "Semester 2", "MLT / Biomedische Laboratoriumtechnologie": "Biomedical Laboratory Technology"};
+  const L = (text) => (params.get("lang") === "en" && DEMO_EN[text]) || text;
 
   const v = (inst, code, year, title, available = true) => ({
     rawId: `ULTRA-B-${inst === "KUL" ? "KUL" : "UCLL"}-${code}-${year}`,
@@ -46,18 +49,18 @@ window.chrome = {
   });
 
   const courses = [
-    course("KUL", "E0I54a", "Anatomie II: theorie", [["2627", false], ["2526", true]]),
-    course("KUL", "E0I12b", "Fysiologie I", [["2526", true]]),
-    course("KUL", "E0I31a", "Biochemie", [["2526", true], ["2425", true]]),
-    course("KUL", "E0J08a", "Histologie", [["2526", true]]),
-    course("UCLL", "QM1359", "Klinische chemie 1", [["2627", true]]),
-    course("UCLL", "QM1402", "Hematologie", [["2627", true]]),
-    course("KUL", "E0K77a", "Medische statistiek", [["2627", true]]),
-    course("KUL", "E0I77a", "Pathologie", [["2627", true], ["2526", true]], { semester: 1 }),
-    course("KUL", "E0I78a", "Farmacologie", [["2526", true]], { semester: 2 }),
-    course("KUL", "E0J21a", "Immunologie", [["2425", true]]),
-    course("UCLL", "QM1511", "Microbiologie", [["2526", true]], { semester: 2 }),
-    course("UCLL", "QM1520", "Parasitologie", [["2627", true]], { semester: 1 })
+    course("KUL", "E0I54a", L("Anatomie II: theorie"), [["2627", false], ["2526", true]]),
+    course("KUL", "E0I12b", L("Fysiologie I"), [["2526", true]]),
+    course("KUL", "E0I31a", L("Biochemie"), [["2526", true], ["2425", true]]),
+    course("KUL", "E0J08a", L("Histologie"), [["2526", true]]),
+    course("UCLL", "QM1359", L("Klinische chemie 1"), [["2627", true]]),
+    course("UCLL", "QM1402", L("Hematologie"), [["2627", true]]),
+    course("KUL", "E0K77a", L("Medische statistiek"), [["2627", true]]),
+    course("KUL", "E0I77a", L("Pathologie"), [["2627", true], ["2526", true]], { semester: 1 }),
+    course("KUL", "E0I78a", L("Farmacologie"), [["2526", true]], { semester: 2 }),
+    course("KUL", "E0J21a", L("Immunologie"), [["2425", true]]),
+    course("UCLL", "QM1511", L("Microbiologie"), [["2526", true]], { semester: 2 }),
+    course("UCLL", "QM1520", L("Parasitologie"), [["2627", true]], { semester: 1 })
   ];
 
   if (params.get("dark") === "1") document.documentElement.classList.add("to-dark");
@@ -73,19 +76,19 @@ window.chrome = {
   widget.className = "panel tol-events-widget";
   // [date (offset in days, or a word), colour, kind, title, source, author, unread]
   const events = [
-    [1, 3, "due", "Test hoofdstuk 4", "Biochemie [QM1374]", null, true],
-    [3, 12, "due", "Indienen verslag labo", "Klinische chemie 1", null, false],
-    [9, 5, "test", "Mondeling examen", "Fysiologie I", null, false],
-    [5, 9, "test", "Tussentijdse toets", "Hematologie", null, true],
-    ["Gisteren", 13, "content", "Hoofdstuk 5: Spijsvertering", "Fysiologie I", "Docent Naam", true],
-    ["Gisteren", 4, "announcement", "Les valt uit donderdag", "Histologie", "Prof. Peeters", true],
-    [-2, 7, "gradebook", "Resultaat labo 1", "Histologie", null, false],
-    [-3, 15, "content", "Slides week 3", "Anatomie II: theorie", "Docent Naam", false],
-    [-4, 2, "announcement", "Herinnering: inschrijven voor practicum", "Klinische chemie 1", "An Janssens", false],
-    [-6, 10, "course", "Nieuwe cursusversie beschikbaar", "Medische statistiek", null, false],
-    [-8, 11, "gradebook", "Punten tussentijdse toets", "Biochemie", null, true],
-    [-30, 16, "content", "Oefeningenbundel", "Anatomie II: theorie", "Docent Naam", false],
-    [-400, 1, "announcement", "Welkom bij het vak", "Histologie", "Prof. Peeters", false]
+    [1, 3, "due", L("Test hoofdstuk 4"), L("Biochemie [QM1374]"), null, true],
+    [3, 12, "due", L("Indienen verslag labo"), L("Klinische chemie 1"), null, false],
+    [9, 5, "test", L("Mondeling examen"), L("Fysiologie I"), null, false],
+    [5, 9, "test", L("Tussentijdse toets"), L("Hematologie"), null, true],
+    ["Gisteren", 13, "content", "Hoofdstuk 5: Spijsvertering", L("Fysiologie I"), L("Docent Naam"), true],
+    ["Gisteren", 4, "announcement", "Les valt uit donderdag", L("Histologie"), "Prof. Peeters", true],
+    [-2, 7, "gradebook", L("Resultaat labo 1"), L("Histologie"), null, false],
+    [-3, 15, "content", L("Slides week 3"), L("Anatomie II: theorie"), L("Docent Naam"), false],
+    [-4, 2, "announcement", L("Herinnering: inschrijven voor practicum"), L("Klinische chemie 1"), "An Janssens", false],
+    [-6, 10, "course", L("Nieuwe cursusversie beschikbaar"), L("Medische statistiek"), null, false],
+    [-8, 11, "gradebook", L("Punten tussentijdse toets"), L("Biochemie"), null, true],
+    [-30, 16, "content", L("Oefeningenbundel"), L("Anatomie II: theorie"), L("Docent Naam"), false],
+    [-400, 1, "announcement", L("Welkom bij het vak"), L("Histologie"), "Prof. Peeters", false]
   ];
   events.forEach(([off, color, kind, title, source, author, unread]) => {
     const item = document.createElement("div");
@@ -112,27 +115,27 @@ window.chrome = {
   const state = NS.storage.defaultState();
   const iso = (off) => { const d = new Date(); d.setDate(d.getDate() + off); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
   state.tasks = [
-    { id: "t1", text: "Samenvatting anatomie afwerken", done: false, due: iso(-1), tag: "Anatomie II", createdAt: 1, doneAt: null },
-    { id: "t2", text: "Labo-verslag nalezen", done: false, due: iso(0), tag: null, createdAt: 2, doneAt: null },
-    { id: "t3", text: "Boeken terugbrengen", done: true, due: null, tag: null, createdAt: 3, doneAt: 4 }
+    { id: "t1", text: L("Samenvatting anatomie afwerken"), done: false, due: iso(-1), tag: L("Anatomie II"), createdAt: 1, doneAt: null },
+    { id: "t2", text: L("Labo-verslag nalezen"), done: false, due: iso(0), tag: null, createdAt: 2, doneAt: null },
+    { id: "t3", text: L("Boeken terugbrengen"), done: true, due: null, tag: null, createdAt: 3, doneAt: 4 }
   ];
   state.editMode = params.get("edit") === "1";
   const langParam = params.get("lang");
   if (langParam === "nl" || langParam === "en") state.language = langParam;
   NS.i18n.setLanguage(state.language);
   state.groups = [
-    { id: "med", name: "Geneeskunde", parentId: null, order: 0, collapsed: false, color: "#7c5cdb" },
-    { id: "f1", name: "1ste fase", parentId: "med", order: 0, collapsed: false, color: null },
-    { id: "s1", name: "1ste semester", parentId: "f1", order: 0, collapsed: false, color: null },
-    { id: "s2", name: "2de semester", parentId: "f1", order: 1, collapsed: false, color: null },
-    { id: "blt", name: "MLT / Biomedische Laboratoriumtechnologie", parentId: null, order: 1, collapsed: false, color: "#2f9e7a" },
+    { id: "med", name: L("Geneeskunde"), parentId: null, order: 0, collapsed: false, color: "#7c5cdb" },
+    { id: "f1", name: L("1ste fase"), parentId: "med", order: 0, collapsed: false, color: null },
+    { id: "s1", name: L("1ste semester"), parentId: "f1", order: 0, collapsed: false, color: null },
+    { id: "s2", name: L("2de semester"), parentId: "f1", order: 1, collapsed: false, color: null },
+    { id: "blt", name: L("MLT / Biomedische Laboratoriumtechnologie"), parentId: null, order: 1, collapsed: false, color: "#2f9e7a" },
     { id: NS.storage.OVERIG_ID, name: "Overig", parentId: null, order: 2, collapsed: true, builtIn: true, color: null }
   ];
   const set = (groupId, order, extra = {}) => ({ groupId, hidden: false, defaultVersion: null, versionNames: {}, customTitle: null, color: null, order, ...extra });
   state.courseSettings = {
     "KUL:E0I54a": set("s2", 0, { defaultVersion: "2526", color: "#e5534b" }),
     "KUL:E0I12b": set("s1", 0),
-    "KUL:E0I31a": set("s1", 1, { defaultVersion: "2526", versionNames: { "2425": "Volledige cursus" } }),
+    "KUL:E0I31a": set("s1", 1, { defaultVersion: "2526", versionNames: { "2425": L("Volledige cursus") } }),
     "KUL:E0J08a": set("s2", 1),
     "UCLL:QM1359": set("blt", 0, { color: "#e0a526" }),
     "UCLL:QM1402": set("blt", 1),
