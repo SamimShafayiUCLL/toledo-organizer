@@ -1,6 +1,10 @@
 (() => {
   const NS = (window.ToledoOrganizer = window.ToledoOrganizer || {});
   const UI_ID = "toledo-organizer-root";
+  const t = (key, vars) => NS.i18n.t(key, vars);
+  const plural = (key, n, vars) => NS.i18n.plural(key, n, vars);
+  // The built-in group keeps its stored name but is shown in the current language until the user renames it.
+  const groupLabel = (group) => (group?.builtIn && group.name === "Overig" ? t("group.other") : group?.name);
 
   function el(tag, attrs = {}, children = []) {
     const node = document.createElement(tag);
@@ -105,17 +109,12 @@
     const institution = courseOrVersion?.institution;
     if (institution === "KUL") return "KU Leuven";
     if (institution === "UCLL") return "UCLL";
-    if (institution === "COMMUNITY" || courseOrVersion?.type === "community") return "Community";
+    if (institution === "COMMUNITY" || courseOrVersion?.type === "community") return t("inst.community");
     return institution || "Toledo";
   }
 
   // ---- smart sorting ----
-  const AUTOSORT_STRATEGIES = [
-    ["institution-semester", "Instelling › Semester", "KU Leuven en UCLL apart, per semester"],
-    ["institution-program", "Instelling › Opleiding", "Per instelling, gegroepeerd op opleidingscode"],
-    ["year-institution", "Academiejaar › Instelling", "Per academiejaar, daarbinnen per instelling"],
-    ["current-archive", "Actueel en archief", "Dit academiejaar apart van ouder materiaal"]
-  ];
+  const AUTOSORT_STRATEGIES = ["institution-semester", "institution-program", "year-institution", "current-archive"];
 
   const isCommunity = (course) => course?.type === "community" || course?.institution === "COMMUNITY";
 
@@ -135,7 +134,7 @@
   function institutionGroupName(course) {
     if (course.institution === "KUL") return ["KU Leuven", 0];
     if (course.institution === "UCLL") return ["UCLL", 1];
-    return ["Andere", 2];
+    return [t("group.institution.other"), 2];
   }
 
   function programOf(course) {
@@ -176,18 +175,18 @@
       const year = newestYear(course);
       if (strategy === "institution-semester") {
         const sem = String(course.semester ?? "");
-        const [name, sort] = sem === "1" ? ["1ste semester", 1] : sem === "2" ? ["2de semester", 2] : ["Overige vakken", 3];
+        const [name, sort] = sem === "1" ? [t("group.sem1"), 1] : sem === "2" ? [t("group.sem2"), 2] : [t("group.otherCourses"), 3];
         place(inst, instSort, name, sort, course);
       } else if (strategy === "institution-program") {
         const program = programOf(course);
-        place(inst, instSort, program ? `Opleiding ${program}` : "Overige vakken", program ? program : "\uffff", course);
+        place(inst, instSort, program ? t("group.program", { program }) : t("group.otherCourses"), program ? program : "\uffff", course);
       } else if (strategy === "year-institution") {
         const start = year ? 2000 + Number(year.slice(0, 2)) : null;
-        if (start == null || start < currentStart - 2) place("Ouder", 1e9, inst, instSort, course);
+        if (start == null || start < currentStart - 2) place(t("group.older"), 1e9, inst, instSort, course);
         else place(yearLabel(year), -start, inst, instSort, course);
       } else if (strategy === "current-archive") {
-        if (year && year >= current) place("Dit academiejaar", 0, inst, instSort, course);
-        else place("Archief", 1, inst, instSort, course);
+        if (year && year >= current) place(t("group.thisYear"), 0, inst, instSort, course);
+        else place(t("group.archive"), 1, inst, instSort, course);
       }
     }
 
@@ -216,7 +215,7 @@
             return;
           }
           if (!response?.ok) {
-            reject(new Error(response?.error || "Download kon niet gestart worden."));
+            reject(new Error(response?.error || t("download.failed")));
             return;
           }
           resolve(response);
@@ -308,7 +307,7 @@
 
     versionLabel(course, version) {
       const custom = this.courseSetting(course.key).versionNames?.[version.year || version.rawId];
-      return custom || version.academicYear || version.year || "Zonder academiejaar";
+      return custom || version.academicYear || version.year || t("version.noYear");
     }
 
     sortCourses(courses) {
@@ -367,36 +366,36 @@
 
       const header = el("div", { class: "to-topbar" });
       const brand = el("div", { class: "to-brand" }, [
-        el("div", { class: "to-brand-title", text: "Mijn vakken" }),
+        el("div", { class: "to-brand-title", text: t("brand.title") }),
         el("div", {
           class: "to-brand-sub",
-          text: `${this.getCourses().length} ${this.getCourses().length === 1 ? "vak" : "vakken"} · ${this.state.groups.length} ${this.state.groups.length === 1 ? "groep" : "groepen"}`
+          text: `${plural("brand.courses", this.getCourses().length)} · ${plural("brand.groups", this.state.groups.length)}`
         })
       ]);
 
       const viewSwitch = el("div", { class: "to-segment" }, [
-        button("Organizer", "view-organizer", "Gebruik je eigen indeling", this.state.viewMode === "organizer" ? "active" : ""),
-        button("Originele Toledo", "view-original", "Toon de ongewijzigde Toledo-lijst", this.state.viewMode === "original" ? "active" : "")
+        button(t("view.organizer"), "view-organizer", t("view.organizer.title"), this.state.viewMode === "organizer" ? "active" : ""),
+        button(t("view.original"), "view-original", t("view.original.title"), this.state.viewMode === "original" ? "active" : "")
       ]);
 
       const editButton = iconButton(
         "pencil",
         "toggle-edit-mode",
-        this.state.editMode ? "Bewerkmodus sluiten" : "Bewerk groepen, kleuren en volgorde",
+        this.state.editMode ? t("edit.close.title") : t("edit.open.title"),
         this.state.editMode ? "active" : "",
-        this.state.editMode ? "Klaar" : "Bewerken"
+        this.state.editMode ? t("edit.done") : t("edit.label")
       );
 
       const autoSortButton =
-        this.state.viewMode === "organizer" ? iconButton("wand", "auto-sort", "Laat de organizer een indeling voorstellen", "ghost", "Slim indelen") : null;
-      header.append(...[brand, autoSortButton, viewSwitch, editButton, iconButton("settings", "settings", "Instellingen", "ghost")].filter(Boolean));
+        this.state.viewMode === "organizer" ? iconButton("wand", "auto-sort", t("autosort.suggest"), "ghost", t("autosort.title")) : null;
+      header.append(...[brand, autoSortButton, viewSwitch, editButton, iconButton("settings", "settings", t("settings.title"), "ghost")].filter(Boolean));
       this.root.append(header);
 
       if (this.state.viewMode === "original") {
         this.root.append(
           el("div", { class: "to-original-note" }, [
-            el("strong", { text: "Originele Toledo-weergave actief." }),
-            document.createTextNode(" De extensie laat de oorspronkelijke lijst hieronder volledig met rust.")
+            el("strong", { text: t("original.note.strong") }),
+            document.createTextNode(` ${t("original.note.text")}`)
           ])
         );
         if (this.state.ui?.settingsOpen) this.root.append(this.renderSettingsModal());
@@ -404,31 +403,31 @@
       }
 
       const controls = el("div", { class: "to-controls" });
-      const sortSelect = el("select", { class: "to-select", "data-role": "course-sort", title: "Sorteer vakken" }, [
-        option("custom", "Eigen volgorde", this.state.courseSort === "custom"),
-        option("az", "Alfabetisch A–Z", this.state.courseSort === "az"),
-        option("za", "Alfabetisch Z–A", this.state.courseSort === "za")
+      const sortSelect = el("select", { class: "to-select", "data-role": "course-sort", title: t("sort.title") }, [
+        option("custom", t("sort.custom"), this.state.courseSort === "custom"),
+        option("az", t("sort.az"), this.state.courseSort === "az"),
+        option("za", t("sort.za"), this.state.courseSort === "za")
       ]);
 
       controls.append(
         el("div", { class: "to-segment compact" }, [
-          button("Structuur", "mode-structure", "Toon je groepen", this.state.organizerMode === "structure" ? "active" : ""),
-          button("Alle vakken", "mode-all", "Toon alle gedetecteerde vakken", this.state.organizerMode === "all" ? "active" : "")
+          button(t("mode.structure"), "mode-structure", t("mode.structure.title"), this.state.organizerMode === "structure" ? "active" : ""),
+          button(t("mode.all"), "mode-all", t("mode.all.title"), this.state.organizerMode === "all" ? "active" : "")
         ]),
         el("input", {
           class: "to-search",
           type: "search",
-          placeholder: "Zoek vak, code of instelling…",
+          placeholder: t("search.placeholder"),
           value: this.state.search || "",
           "data-role": "search"
         }),
-        el("label", { class: "to-sort-control" }, [el("span", { text: "Sorteren" }), sortSelect]),
+        el("label", { class: "to-sort-control" }, [el("span", { text: t("sort.label") }), sortSelect]),
         el("label", { class: "to-checkbox" }, [
           el("input", { type: "checkbox", "data-role": "show-hidden" }),
-          el("span", { text: "Verborgen tonen" })
+          el("span", { text: t("showHidden") })
         ])
       );
-      if (this.state.editMode) controls.append(iconButton("plus", "add-root-group", "Maak een hoofdgroep", "", "Nieuwe groep"));
+      if (this.state.editMode) controls.append(iconButton("plus", "add-root-group", t("group.new.title"), "", t("group.new")));
 
       const hiddenInput = controls.querySelector('[data-role="show-hidden"]');
       hiddenInput.checked = Boolean(this.state.showHidden);
@@ -437,8 +436,8 @@
       if (this.state.editMode) {
         this.root.append(
           el("div", { class: "to-edit-hint" }, [
-            el("strong", { text: "Bewerkmodus" }),
-            document.createTextNode(" Sleep vakken en groepen, klik op een bolletje om een kleur te kiezen. Klik op Klaar als je klaar bent.")
+            el("strong", { text: t("edit.hint.title") }),
+            document.createTextNode(` ${t("edit.hint.text")}`)
           ])
         );
       }
@@ -476,13 +475,13 @@
       const courses = this.sortCourses(this.getFilteredCourses());
       section.append(
         el("div", { class: "to-section-heading" }, [
-          el("h2", { text: `Alle vakken (${courses.length})` }),
-          el("span", { class: "to-muted", text: "Gebruik Structuur om vakken in groepen te plaatsen." })
+          el("h2", { text: t("all.heading", { n: courses.length }) }),
+          el("span", { class: "to-muted", text: t("all.hint") })
         ])
       );
       const list = el("div", { class: "to-course-list" });
       courses.forEach((course) => list.append(this.renderCourse(course, this.courseSetting(course.key).groupId || null)));
-      if (!courses.length) list.append(el("div", { class: "to-empty", text: "Geen vakken gevonden." }));
+      if (!courses.length) list.append(el("div", { class: "to-empty", text: t("all.empty") }));
       section.append(list);
       return section;
     }
@@ -510,7 +509,7 @@
           el("div", {
             class: "to-root-dropzone",
             "data-drop-type": "root-groups",
-            text: "Sleep een groep hierheen om ze op hoofdniveau te plaatsen"
+            text: t("dropzone.root")
           })
         );
       }
@@ -524,20 +523,20 @@
         "data-group-id": ""
       });
       const unassignedTitle = [
-        el("span", { class: "to-group-title", text: "Niet ingedeeld" }),
+        el("span", { class: "to-group-title", text: t("unassigned.title") }),
         el("span", { class: "to-count", text: String(unassigned.length) }),
-        el("span", { class: "to-group-hint", text: "Nieuwe vakken komen hier" })
+        el("span", { class: "to-group-hint", text: t("unassigned.hint") })
       ];
       if (unassigned.length >= 3 && !this.state.editMode) {
         unassignedTitle.push(
-          el("span", { class: "to-suggest", text: "Laat de organizer een indeling voorstellen" }),
-          el("button", { class: "to-btn small primary", type: "button", "data-action": "auto-sort", text: "Slim indelen" })
+          el("span", { class: "to-suggest", text: t("autosort.suggest") }),
+          el("button", { class: "to-btn small primary", type: "button", "data-action": "auto-sort", text: t("autosort.title") })
         );
       }
       unassignedSection.append(el("div", { class: "to-group-header" }, [el("div", { class: "to-group-title-wrap" }, unassignedTitle)]));
       const unassignedList = el("div", { class: "to-course-list to-unassigned-list" });
       this.sortCourses(unassigned).forEach((course) => unassignedList.append(this.renderCourse(course, null)));
-      if (!unassigned.length) unassignedList.append(el("div", { class: "to-empty", text: "Alles is ingedeeld." }));
+      if (!unassigned.length) unassignedList.append(el("div", { class: "to-empty", text: t("unassigned.empty") }));
       unassignedSection.append(unassignedList);
       wrap.append(unassignedSection);
       return wrap;
@@ -556,27 +555,27 @@
 
       const titleChildren = [];
       if (this.state.editMode) {
-        const grip = el("span", { class: "to-group-drag", title: "Sleep om te verplaatsen", "aria-hidden": "true" });
+        const grip = el("span", { class: "to-group-drag", title: t("group.drag"), "aria-hidden": "true" });
         grip.append(icon("grip", "fill"));
         titleChildren.push(grip);
       }
       titleChildren.push(
-        iconButton("chevron", "toggle-group", group.collapsed ? "Uitklappen" : "Inklappen", "ghost tiny to-chevron"),
-        this.swatch("group-color", group.color, "Kleur van groep"),
-        el("span", { class: "to-group-title", "data-action": "toggle-group", text: group.name }),
+        iconButton("chevron", "toggle-group", group.collapsed ? t("group.expand") : t("group.collapse"), "ghost tiny to-chevron"),
+        this.swatch("group-color", group.color, t("group.color"), t("group.color.pick")),
+        el("span", { class: "to-group-title", "data-action": "toggle-group", text: groupLabel(group) }),
         el("span", { class: "to-count", text: String(groupCourses.length + descendantCourseCount) })
       );
 
       const actions = el("div", { class: "to-group-actions" });
       if (this.state.editMode) {
-        if (depth < 3) actions.append(iconButton("plus", "add-subgroup", "Voeg een subgroep toe", "ghost small", "Subgroep"));
+        if (depth < 3) actions.append(iconButton("plus", "add-subgroup", t("group.addSub"), "ghost small", t("group.subLabel")));
         actions.append(
           ...[
-            iconButton("up", "group-up", "Verplaats omhoog", "ghost tiny"),
-            iconButton("down", "group-down", "Verplaats omlaag", "ghost tiny"),
-            iconButton("pencil", "rename-group", "Hernoem groep", "ghost tiny"),
-            hasColor ? iconButton("reset", "clear-group-color", "Verwijder groepskleur", "ghost tiny") : null,
-            iconButton("trash", "delete-group", "Verwijder groep", "ghost tiny danger")
+            iconButton("up", "group-up", t("group.up"), "ghost tiny"),
+            iconButton("down", "group-down", t("group.down"), "ghost tiny"),
+            iconButton("pencil", "rename-group", t("group.rename"), "ghost tiny"),
+            hasColor ? iconButton("reset", "clear-group-color", t("group.clearColor"), "ghost tiny") : null,
+            iconButton("trash", "delete-group", t("group.delete"), "ghost tiny danger")
           ].filter(Boolean)
         );
       }
@@ -605,7 +604,7 @@
         body.append(
           el("div", {
             class: "to-empty",
-            text: this.state.editMode ? "Sleep hier vakken of maak een subgroep." : "Deze groep is leeg."
+            text: this.state.editMode ? t("group.emptyEdit") : t("group.empty")
           })
         );
       }
@@ -624,7 +623,7 @@
     }
 
     // Colour marker: a plain dot when browsing, a clickable colour input in edit mode.
-    swatch(role, value, title) {
+    swatch(role, value, title, pickTitle) {
       const hasColor = validColor(value);
       if (!this.state.editMode) {
         // An empty slot keeps titles aligned whether or not a colour is set.
@@ -635,7 +634,7 @@
         type: "color",
         value: hasColor ? value : "#244b8f",
         "data-role": role,
-        title: hasColor ? title : `${title} kiezen`
+        title: hasColor ? title : pickTitle
       });
     }
 
@@ -658,7 +657,7 @@
       if (this.flashKey === course.key) card.classList.add("just-moved");
 
       const metaBits = [institutionLabel(course)];
-      if (course.semester) metaBits.push(`Semester ${course.semester}`);
+      if (course.semester) metaBits.push(t("course.semester", { n: course.semester }));
       if (course.code) metaBits.push(course.code);
 
       const titleButton = el("button", {
@@ -667,8 +666,8 @@
         "data-action": "open-default",
         text: this.courseTitle(course),
         title: defaultVersion?.available
-          ? `Open standaardversie ${this.versionLabel(course, defaultVersion)}`
-          : "Standaardversie is niet beschikbaar; klik om versies te bekijken"
+          ? t("course.open.default", { version: this.versionLabel(course, defaultVersion) })
+          : t("course.default.unavailable")
       });
 
       const mainChildren = [
@@ -679,12 +678,12 @@
       if (newestVersion && !newestVersion.available) {
         const status = el("div", {
           class: "to-course-status warning",
-          title: "Toledo markeert deze cursusversie momenteel als niet beschikbaar."
+          title: t("course.status.title")
         });
         status.append(
           icon("alert"),
           el("span", {
-            text: `${this.versionLabel(course, newestVersion)} is niet beschikbaar op Toledo (${institutionLabel(newestVersion)}).`
+            text: t("version.unavailable.msg", { year: this.versionLabel(course, newestVersion), institution: institutionLabel(newestVersion) })
           })
         );
         mainChildren.push(status);
@@ -696,42 +695,42 @@
           el("span", {
             class: `to-year-badge${defaultVersion.available ? "" : " unavailable"}`,
             text: this.versionLabel(course, defaultVersion),
-            title: "Standaardversie"
+            title: t("version.default")
           })
         );
       }
       if (this.state.editMode) {
         if (this.state.organizerMode === "structure" && this.state.courseSort === "custom") {
           actions.append(
-            iconButton("up", "course-up", "Vak omhoog", "ghost tiny"),
-            iconButton("down", "course-down", "Vak omlaag", "ghost tiny")
+            iconButton("up", "course-up", t("course.up"), "ghost tiny"),
+            iconButton("down", "course-down", t("course.down"), "ghost tiny")
           );
         }
         actions.append(
           ...[
-            iconButton("pencil", "rename-course", "Geef het vak een eigen naam", "ghost tiny"),
-            hasColor ? iconButton("reset", "clear-course-color", "Verwijder vakkleur", "ghost tiny") : null,
+            iconButton("pencil", "rename-course", t("course.rename"), "ghost tiny"),
+            hasColor ? iconButton("reset", "clear-course-color", t("course.clearColor"), "ghost tiny") : null,
             iconButton(
               setting.hidden ? "eye" : "eyeOff",
               "toggle-hidden",
-              setting.hidden ? "Maak opnieuw zichtbaar" : "Verberg vak",
+              setting.hidden ? t("course.show") : t("course.hide"),
               "ghost tiny"
             )
           ].filter(Boolean)
         );
       }
       actions.append(
-        iconButton("chevron", "toggle-course", expanded ? "Verberg academiejaren" : "Toon academiejaren", "ghost tiny to-chevron")
+        iconButton("chevron", "toggle-course", expanded ? t("course.versions.hide") : t("course.versions.show"), "ghost tiny to-chevron")
       );
 
       const headChildren = [];
       if (this.state.editMode) {
-        const grip = el("span", { class: "to-drag-handle", title: "Sleep om te verplaatsen", "aria-hidden": "true" });
+        const grip = el("span", { class: "to-drag-handle", title: t("group.drag"), "aria-hidden": "true" });
         grip.append(icon("grip", "fill"));
         headChildren.push(grip);
       }
       headChildren.push(
-        this.swatch("course-color", setting.color, "Kleur van vak"),
+        this.swatch("course-color", setting.color, t("course.color"), t("course.color.pick")),
         el("div", { class: "to-course-main" }, mainChildren),
         actions
       );
@@ -757,19 +756,19 @@
           iconButton(
             "star",
             "set-default-version",
-            isDefault ? "Standaardversie" : "Maak standaardversie",
+            isDefault ? t("version.default") : t("version.makeDefault"),
             `ghost tiny to-star${isDefault ? " is-default" : ""}`
           )
         );
       } else {
-        const slot = el("span", { class: "to-default-star", title: isDefault ? "Standaardversie" : null });
+        const slot = el("span", { class: "to-default-star", title: isDefault ? t("version.default") : null });
         if (isDefault) slot.append(icon("star", "fill"));
         row.append(slot);
       }
 
       const versionMeta = version.available
         ? version.rawId
-        : `${version.rawId} · Niet beschikbaar op Toledo (${institutionLabel(version)})`;
+        : t("version.meta.unavailable", { id: version.rawId, institution: institutionLabel(version) });
 
       row.append(
         el("div", { class: "to-version-info" }, [
@@ -778,11 +777,11 @@
         ])
       );
 
-      if (this.state.editMode) row.append(iconButton("pencil", "rename-version", "Geef deze versie een eigen naam", "ghost tiny"));
+      if (this.state.editMode) row.append(iconButton("pencil", "rename-version", t("version.rename"), "ghost tiny"));
       row.append(
         version.available
-          ? iconButton("open", "open-version", `Open ${label}`, "small", "Openen")
-          : el("span", { class: "to-disabled-label", text: "Niet beschikbaar" })
+          ? iconButton("open", "open-version", t("version.open", { label }), "small", t("version.openBtn"))
+          : el("span", { class: "to-disabled-label", text: t("version.unavailable") })
       );
 
       row.dataset.courseKey = course.key;
@@ -793,27 +792,27 @@
 
     renderSettingsModal() {
       const overlay = el("div", { class: "to-modal-overlay", "data-action": "close-settings-overlay" });
-      const modal = el("div", { class: "to-modal", role: "dialog", "aria-modal": "true", "aria-label": "Instellingen" });
+      const modal = el("div", { class: "to-modal", role: "dialog", "aria-modal": "true", "aria-label": t("settings.title") });
       modal.append(
         el("div", { class: "to-modal-head" }, [
           el("div", {}, [
-            el("h2", { text: "Instellingen" }),
-            el("p", { class: "to-muted", text: "Alles wordt lokaal in Edge bewaard. Toledo-login en cookies worden niet geëxporteerd." })
+            el("h2", { text: t("settings.title") }),
+            el("p", { class: "to-muted", text: t("settings.sub") })
           ]),
-          iconButton("close", "close-settings", "Sluiten", "ghost")
+          iconButton("close", "close-settings", t("common.close"), "ghost")
         ]),
         el("div", { class: "to-settings-grid" }, [
-          this.settingsCard("Back-up", "Bewaar of herstel je groepen, kleuren, volgorde en standaardversies.", [
-            button("Exporteer instellingen", "export-settings"),
-            button("Importeer instellingen", "import-settings")
+          this.settingsCard(t("settings.backup.title"), t("settings.backup.desc"), [
+            button(t("settings.export"), "export-settings"),
+            button(t("settings.import"), "import-settings")
           ]),
-          this.settingsCard("Debug", "Exporteer alleen de vakken die momenteel op Toledo gedetecteerd worden.", [
-            button("Exporteer gedetecteerde vakken", "export-detected")
+          this.settingsCard(t("settings.debug.title"), t("settings.debug.desc"), [
+            button(t("settings.exportDetected"), "export-detected")
           ]),
-          this.settingsCard("Uiterlijk", "Kies een modus en accentkleur, en geef heel Toledo een rustiger, moderner uiterlijk.", this.appearanceControls()),
-          this.settingsCard("Dashboard", "Kies wat er in de rechterkolom van Toledo getoond wordt.", this.dashboardControls()),
-          this.settingsCard("Reset", "Verwijder alleen Toledo Organizer-instellingen. Toledo zelf wordt niet aangepast.", [
-            button("Reset Organizer", "reset-organizer", "", "danger")
+          this.settingsCard(t("settings.appearance.title"), t("settings.appearance.desc"), this.appearanceControls()),
+          this.settingsCard(t("settings.dashboard.title"), t("settings.dashboard.desc"), this.dashboardControls()),
+          this.settingsCard(t("settings.reset.title"), t("settings.reset.desc"), [
+            button(t("settings.reset.btn"), "reset-organizer", "", "danger")
           ])
         ]),
         el("input", {
@@ -833,17 +832,28 @@
     appearanceControls() {
       const mode = this.state.appearance?.mode || "system";
       const accent = (this.state.appearance?.accent || "").toLowerCase();
-      const modes = [["system", "Systeem"], ["light", "Licht"], ["dark", "Donker"]];
+      const modes = [["system", t("appearance.system")], ["light", t("appearance.light")], ["dark", t("appearance.dark")]];
       const presets = [
-        ["#00627f", "Toledo-teal"],
-        ["#2563eb", "Blauw"],
-        ["#4f46e5", "Indigo"],
-        ["#7c3aed", "Paars"],
-        ["#db2777", "Roze"],
-        ["#ea580c", "Oranje"],
-        ["#16a34a", "Groen"],
-        ["#475467", "Grafiet"]
+        ["#00627f", t("accent.teal")],
+        ["#2563eb", t("accent.blue")],
+        ["#4f46e5", t("accent.indigo")],
+        ["#7c3aed", t("accent.purple")],
+        ["#db2777", t("accent.pink")],
+        ["#ea580c", t("accent.orange")],
+        ["#16a34a", t("accent.green")],
+        ["#475467", t("accent.graphite")]
       ];
+      const language = this.state.language || "auto";
+      const languages = [["auto", t("language.auto")], ["nl", t("language.nl")], ["en", t("language.en")]];
+      const languageSwitch = el(
+        "div",
+        { class: "to-segment", title: t("language.title") },
+        languages.map(([value, label]) => {
+          const node = button(label, "language", "", language === value ? "active" : "");
+          node.dataset.value = value;
+          return node;
+        })
+      );
       const modeSwitch = el(
         "div",
         { class: "to-segment to-mode-switch" },
@@ -873,14 +883,15 @@
           type: "color",
           value: validColor(accent) ? accent : "#00627f",
           "data-role": "accent-custom",
-          title: "Eigen kleur"
+          title: t("accent.custom")
         })
       );
       return [
         modeSwitch,
         swatches,
+        languageSwitch,
         button(
-          this.state.themeEnabled === false ? "Toledo-thema aanzetten" : "Toledo-thema uitzetten",
+          this.state.themeEnabled === false ? t("theme.on") : t("theme.off"),
           "toggle-theme",
           "",
           this.state.themeEnabled === false ? "primary" : ""
@@ -896,11 +907,11 @@
         return el("label", { class: "to-checkbox" }, [input, el("span", { text: label })]);
       };
       return [
-        box("dash-tasks", "Taken tonen", dash.showTasks !== false),
-        box("dash-upcoming", "Binnenkort tonen", dash.showUpcoming !== false),
-        box("dash-hero", "Begroeting en overzicht bovenaan", dash.showHero !== false),
-        box("dash-feed", "Eigen updates-overzicht i.p.v. dat van Toledo", dash.replaceFeed !== false),
-        box("dash-hide-info", "Informatiepaneel van Toledo verbergen", dash.hideInfoPanel)
+        box("dash-tasks", t("dash.tasks"), dash.showTasks !== false),
+        box("dash-upcoming", t("dash.upcoming"), dash.showUpcoming !== false),
+        box("dash-hero", t("dash.hero"), dash.showHero !== false),
+        box("dash-feed", t("dash.feed"), dash.replaceFeed !== false),
+        box("dash-hide-info", t("dash.hideInfo"), dash.hideInfoPanel)
       ];
     }
 
@@ -924,15 +935,18 @@
       const recommended = recommendStrategy(courses);
       const plan = planAutoSort(courses, this.state, this.autosort.strategy, this.autosort.all);
       const overlay = el("div", { class: "to-modal-overlay", "data-action": "close-autosort-overlay" });
-      const modal = el("div", { class: "to-modal to-autosort", role: "dialog", "aria-modal": "true", "aria-label": "Slim indelen" });
+      const modal = el("div", { class: "to-modal to-autosort", role: "dialog", "aria-modal": "true", "aria-label": t("autosort.title") });
 
       const strategies = el(
         "div",
         { class: "to-strategy-list", role: "radiogroup" },
-        AUTOSORT_STRATEGIES.map(([id, title, desc]) => {
+        AUTOSORT_STRATEGIES.map((id) => {
           const active = this.autosort.strategy === id;
-          const children = [el("span", { class: "to-strategy-title", text: title }), el("span", { class: "to-strategy-desc", text: desc })];
-          if (id === recommended) children.push(el("span", { class: "to-pill", text: "Aanbevolen" }));
+          const children = [
+            el("span", { class: "to-strategy-title", text: t(`autosort.${id}.title`) }),
+            el("span", { class: "to-strategy-desc", text: t(`autosort.${id}.desc`) })
+          ];
+          if (id === recommended) children.push(el("span", { class: "to-pill", text: t("autosort.recommended") }));
           return el(
             "button",
             {
@@ -962,32 +976,32 @@
         row(1, root.name, root.count, null);
         for (const child of root.children) row(2, child.name, child.courses.length, child.courses);
       }
-      if (plan.overig.length) row(1, "Overig", plan.overig.length, plan.overig);
+      if (plan.overig.length) row(1, t("group.other"), plan.overig.length, plan.overig);
 
-      const preview = el("div", { class: "to-autosort-preview" }, [el("h3", { class: "to-preview-title", text: "Voorbeeld" })]);
+      const preview = el("div", { class: "to-autosort-preview" }, [el("h3", { class: "to-preview-title", text: t("autosort.preview") })]);
       if (plan.total) preview.append(tree);
-      else preview.append(el("div", { class: "to-dash-empty", text: "Er zijn geen vakken om in te delen." }));
+      else preview.append(el("div", { class: "to-dash-empty", text: t("autosort.none") }));
 
       const apply = el("button", {
         class: "to-btn primary",
         type: "button",
         "data-action": "autosort-apply",
-        text: `${plan.total} ${plan.total === 1 ? "vak" : "vakken"} indelen`
+        text: plural("autosort.apply", plan.total)
       });
       apply.disabled = plan.total === 0;
 
       modal.append(
         el("div", { class: "to-modal-head" }, [
           el("div", {}, [
-            el("h2", { text: "Slim indelen" }),
-            el("p", { class: "to-muted", text: "Kies hoe je vakken automatisch in groepen komen. Je kunt daarna alles nog aanpassen." })
+            el("h2", { text: t("autosort.title") }),
+            el("p", { class: "to-muted", text: t("autosort.desc") })
           ]),
-          iconButton("close", "close-autosort", "Sluiten", "ghost")
+          iconButton("close", "close-autosort", t("common.close"), "ghost")
         ]),
         strategies,
-        el("label", { class: "to-checkbox" }, [allInput, el("span", { text: "Ook vakken herschikken die al in een groep zitten" })]),
+        el("label", { class: "to-checkbox" }, [allInput, el("span", { text: t("autosort.all") })]),
         preview,
-        el("div", { class: "to-modal-actions" }, [button("Annuleren", "close-autosort"), apply])
+        el("div", { class: "to-modal-actions" }, [button(t("common.cancel"), "close-autosort"), apply])
       );
       overlay.append(modal);
       return overlay;
@@ -1038,7 +1052,7 @@
 
       this.autosort = { open: false, strategy: null, all: false };
       await this.patchState({ groups, courseSettings });
-      this.toast(`${plan.total} ${plan.total === 1 ? "vak" : "vakken"} ingedeeld in ${used.size} ${used.size === 1 ? "groep" : "groepen"}.`);
+      this.toast(t("autosort.done", { courses: plural("brand.courses", plan.total), groups: plural("brand.groups", used.size) }));
     }
 
     settingsCard(title, description, actions) {
@@ -1106,6 +1120,10 @@
         return this.patchState({ appearance: { ...this.state.appearance, accent: actionEl.dataset.value } });
       }
       if (action === "toggle-theme") return this.patchState({ themeEnabled: this.state.themeEnabled === false });
+      if (action === "language") {
+        const value = actionEl.dataset.value;
+        return this.patchState({ language: ["auto", "nl", "en"].includes(value) ? value : "auto" });
+      }
     }
 
     handleInput(event) {
@@ -1153,9 +1171,9 @@
           const imported = NS.storage.validateImportedState(value);
           imported.ui = { ...(imported.ui || {}), settingsOpen: false };
           await this.setState(imported);
-          this.toast("Instellingen geïmporteerd.");
+          this.toast(t("import.done"));
         } catch (error) {
-          alert(`Importeren mislukt: ${error.message}`);
+          alert(t("import.failed", { message: error.message }));
         } finally {
           event.target.value = "";
         }
@@ -1387,8 +1405,8 @@
 
     async createGroup(parentId) {
       const depth = parentId ? NS.matcher.groupDepth(parentId, this.state.groups) + 1 : 1;
-      if (depth > 3) return alert("Maximaal 3 niveaus zijn toegestaan.");
-      const name = prompt("Naam van de groep:");
+      if (depth > 3) return alert(t("group.maxDepth"));
+      const name = prompt(t("group.prompt.new"));
       if (!name?.trim()) return;
       const siblings = this.state.groups.filter((g) => (g.parentId || null) === (parentId || null));
       const group = {
@@ -1405,7 +1423,7 @@
     async renameGroup(groupId) {
       const group = this.state.groups.find((g) => g.id === groupId);
       if (!group) return;
-      const name = prompt("Nieuwe groepsnaam:", group.name);
+      const name = prompt(t("group.prompt.rename"), groupLabel(group));
       if (!name?.trim()) return;
       const groups = this.state.groups.map((g) => (g.id === groupId ? { ...g, name: name.trim() } : g));
       await this.patchState({ groups });
@@ -1423,7 +1441,7 @@
       if (!group) return;
       const descendantIds = NS.matcher.descendants(groupId, this.state.groups);
       const removeIds = new Set([groupId, ...descendantIds]);
-      const ok = confirm(`Groep “${group.name}”${descendantIds.size ? " en alle subgroepen" : ""} verwijderen? Vakken worden naar Niet ingedeeld verplaatst.`);
+      const ok = confirm(t(descendantIds.size ? "group.confirmDeleteSub" : "group.confirmDelete", { name: groupLabel(group) }));
       if (!ok) return;
       const groups = this.state.groups.filter((g) => !removeIds.has(g.id));
       const courseSettings = { ...this.state.courseSettings };
@@ -1470,7 +1488,7 @@
       if (!course) return;
       const setting = this.courseSetting(courseKey);
       const current = setting.customTitle || course.title;
-      const name = prompt("Eigen naam voor dit vak (leeg = Toledo-naam):", current);
+      const name = prompt(t("course.prompt.rename"), current);
       if (name == null) return;
       const courseSettings = {
         ...this.state.courseSettings,
@@ -1504,7 +1522,7 @@
       // so allow https links on KU Leuven / UCLL domains, not just this origin.
       const trusted = /(^|\.)(kuleuven\.be|kuleuven\.cloud|ucll\.be)$/i;
       if (!url || url.protocol !== "https:" || !trusted.test(url.hostname)) {
-        this.toast("Deze link wijst naar een andere website en wordt niet geopend.");
+        this.toast(t("link.external"));
         return;
       }
       if (event && (event.ctrlKey || event.metaKey)) window.open(url.href, "_blank", "noopener");
@@ -1520,7 +1538,7 @@
       } else {
         this.expandedCourses.add(courseKey);
         this.render();
-        this.toast(`De gekozen standaardversie is niet beschikbaar op Toledo (${institutionLabel(course)}).`);
+        this.toast(t("default.unavailable.toast", { institution: institutionLabel(course) }));
       }
     }
 
@@ -1528,7 +1546,7 @@
       if (!versionRow) return;
       const courseKey = versionRow.dataset.courseKey;
       const year = versionRow.dataset.year || null;
-      if (!year) return this.toast("Deze versie heeft geen academiejaar en kan niet als standaard worden vastgezet.");
+      if (!year) return this.toast(t("version.noYearDefault"));
       const setting = this.courseSetting(courseKey);
       const courseSettings = {
         ...this.state.courseSettings,
@@ -1546,7 +1564,7 @@
       if (!version) return;
       const setting = this.courseSetting(course.key);
       const current = this.versionLabel(course, version);
-      const name = prompt("Eigen naam voor deze versie (leeg = standaard jaartal):", current);
+      const name = prompt(t("version.prompt.rename"), current);
       if (name == null) return;
       const versionNames = { ...(setting.versionNames || {}) };
       const key = version.year || version.rawId;
@@ -1610,8 +1628,8 @@
       this.flash(sourceKey);
       await this.patchState({ courseSettings, groups });
       if (fromGroupId !== groupId) {
-        const name = groupId ? this.state.groups.find((g) => g.id === groupId)?.name : "Niet ingedeeld";
-        this.toast(`${this.courseTitle(source)} verplaatst naar ${name || "groep"}.`);
+        const name = groupId ? groupLabel(this.state.groups.find((g) => g.id === groupId)) : t("unassigned.title");
+        this.toast(t("move.toast", { course: this.courseTitle(source), group: name || t("move.groupFallback") }));
       }
     }
 
@@ -1629,9 +1647,9 @@
       if (!group) return;
       const parent = parentId || null;
       if (parent && (parent === groupId || NS.matcher.descendants(groupId, this.state.groups).has(parent))) {
-        return this.toast("Een groep kan niet in een eigen subgroep worden geplaatst.");
+        return this.toast(t("group.err.selfNest"));
       }
-      if (!this.canPlaceGroup(groupId, parent)) return this.toast("Deze verplaatsing zou meer dan 3 niveaus maken.");
+      if (!this.canPlaceGroup(groupId, parent)) return this.toast(t("group.err.depth"));
 
       const siblings = this.state.groups
         .filter((g) => (g.parentId || null) === parent && g.id !== groupId)
@@ -1675,10 +1693,10 @@
     async exportSettings() {
       try {
         await downloadJson("toledo-organizer-instellingen.json", NS.storage.exportState(this.state));
-        this.toast("Instellingen geëxporteerd naar Downloads.");
+        this.toast(t("export.done"));
       } catch (error) {
         console.error("[Toledo Organizer] Export mislukt", error);
-        this.toast(`Export mislukt: ${error.message}`);
+        this.toast(t("export.failed", { message: error.message }));
       }
     }
 
@@ -1700,19 +1718,19 @@
       }));
       try {
         await downloadJson(`toledo-detected-${new Date().toISOString().slice(0, 10)}.json`, clean);
-        this.toast("Gedetecteerde vakken geëxporteerd naar Downloads.");
+        this.toast(t("export.detected.done"));
       } catch (error) {
         console.error("[Toledo Organizer] Debug-export mislukt", error);
-        this.toast(`Export mislukt: ${error.message}`);
+        this.toast(t("export.failed", { message: error.message }));
       }
     }
 
     async resetOrganizer() {
-      const ok = confirm("Alle Toledo Organizer-instellingen resetten? Dit verandert niets aan Toledo zelf.");
+      const ok = confirm(t("reset.confirm"));
       if (!ok) return;
       const fresh = await NS.storage.resetState();
       await this.setState(fresh);
-      this.toast("Organizer is gereset.");
+      this.toast(t("reset.done"));
     }
 
     toast(message) {

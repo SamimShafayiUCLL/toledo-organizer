@@ -14,7 +14,7 @@
   }
 
   function formatAcademicYear(code) {
-    if (!/^\d{4}$/.test(code || "")) return code || "Onbekend jaar";
+    if (!/^\d{4}$/.test(code || "")) return code || NS.i18n.t("detector.unknownYear");
     const a = Number(code.slice(0, 2));
     const b = Number(code.slice(2, 4));
     return `20${String(a).padStart(2, "0")}-20${String(b).padStart(2, "0")}`;
@@ -73,7 +73,7 @@
       const idEl = item.querySelector(".learning-unit-id");
       if (!titleEl || !idEl) continue;
 
-      const title = text(titleEl) || titleEl.getAttribute("title") || "Onbekend vak";
+      const title = text(titleEl) || titleEl.getAttribute("title") || NS.i18n.t("detector.unknownCourse");
       const rawId = text(idEl).replace(/^\s+/, "");
       if (!rawId || seen.has(rawId)) continue;
       seen.add(rawId);

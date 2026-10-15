@@ -25,6 +25,7 @@
 
   async function persist(nextState) {
     state = nextState;
+    NS.i18n.setLanguage(state.language);
     applyAppearance();
     await NS.storage.saveState(state);
     applySourceVisibility();
@@ -254,6 +255,7 @@
 
   async function init() {
     state = await NS.storage.loadState();
+    NS.i18n.setLanguage(state.language);
     applyAppearance();
     prehide();
     document.addEventListener("keydown", onShortcut);

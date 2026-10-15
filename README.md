@@ -4,7 +4,7 @@
 
 **Your Toledo home page, organised.** A free browser extension for [Toledo](https://toledo.kuleuven.be) (KU Leuven and UCLL) that sorts your courses into your own groups, merges old academic years, and turns the home page into a calm overview of what's due.
 
-*Nederlands: [zie verder](#nederlands).*
+*Available in English and Dutch. Nederlands: [zie verder](#nederlands).*
 
 ![Toledo Organizer](docs/screenshot-organizer.png)
 
@@ -28,6 +28,7 @@
 **A calmer Toledo**
 - A cleaner look for the whole Toledo portal, a wider layout with a sidebar that stays in view
 - Light, dark or system mode, and your own accent colour
+- English or Dutch, following your Toledo language automatically
 
 ![Dark mode with a custom accent](docs/screenshot-dark.png)
 
@@ -37,7 +38,7 @@
 
 ## Install
 
-1. Download `toledo-organizer-v0.5.0.zip` from the [latest release](../../releases/latest) and unzip it to a folder you'll keep (for example `Documents\toledo-organizer`).
+1. Download the `.zip` file from the [latest release](../../releases/latest) and unzip it to a folder you'll keep (for example `Documents\toledo-organizer`).
 2. In Microsoft Edge, open `edge://extensions`. (Brave: `brave://extensions`, Opera: `opera://extensions`.)
 3. Turn on **Developer mode**.
 4. Click **Load unpacked** and pick the unzipped folder (the one with `manifest.json` in it).
@@ -76,10 +77,11 @@ MIT, see [LICENSE](LICENSE).
 - **Binnenkort**: komende deadlines en toetsen uit je Toledo-updates, met één klik een taak.
 - **Updates**: Toledo-meldingen duidelijker verwoord, per dag gegroepeerd en te filteren; openen markeert ze nog steeds als gelezen.
 - **Rustiger Toledo**: een strakker uiterlijk, bredere pagina, licht/donker/systeem en je eigen accentkleur.
+- **Nederlands of Engels**: volgt automatisch de taal van je Toledo.
 
 ### Installeren
 
-1. Download `toledo-organizer-v0.5.0.zip` bij de [laatste release](../../releases/latest) en pak het uit in een map die je bijhoudt.
+1. Download het `.zip`-bestand bij de [laatste release](../../releases/latest) en pak het uit in een map die je bijhoudt.
 2. Open in Microsoft Edge `edge://extensions` (Brave: `brave://extensions`, Opera: `opera://extensions`).
 3. Zet **Ontwikkelaarsmodus** aan.
 4. Klik **Uitgepakte extensie laden** en kies de uitgepakte map (met `manifest.json` erin).

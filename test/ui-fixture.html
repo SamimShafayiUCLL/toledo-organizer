@@ -9,6 +9,7 @@ window.chrome = {
   runtime: { sendMessage: (_msg, cb)=>cb({ok:true}) }
 };
 </script>
+<script src="../src/i18n.js"></script>
 <script src="../src/storage.js"></script>
 <script src="../src/matcher.js"></script>
 <script src="../src/ui.js"></script>
@@ -16,6 +17,8 @@ window.chrome = {
 (async () => {
   const NS = window.ToledoOrganizer;
   let state = NS.storage.defaultState();
+  state.language = 'nl'; // the assertions below check Dutch text
+  NS.i18n.setLanguage('nl');
   state.groups = [
     {id:'med', name:'Geneeskunde', parentId:null, order:0, collapsed:false, color:'#8b5cf6'},
     {id:'phase1', name:'1ste fase', parentId:'med', order:0, collapsed:false, color:null},
@@ -42,7 +45,7 @@ window.chrome = {
   const enrollments = courses.flatMap(c => c.versions.map(v => ({...v,key:c.key,code:c.code,title:c.title})));
   const ui = new NS.ui.OrganizerUI({
     state,
-    onStateChange: async (next)=>{ state=next; },
+    onStateChange: async (next)=>{ state=next; NS.i18n.setLanguage(state.language); },
     getCourses: ()=>courses,
     getEnrollments: ()=>enrollments
   });

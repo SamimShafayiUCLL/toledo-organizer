@@ -17,6 +17,7 @@
     courseSort: "custom",
     themeEnabled: true,
     appearance: { mode: "system", accent: DEFAULT_ACCENT },
+    language: "auto",
     tasks: [],
     dashboard: { showTasks: true, showUpcoming: true, hideInfoPanel: false, showHero: true, replaceFeed: true },
     groups: [
@@ -173,6 +174,7 @@
         mode: ["system", "light", "dark"].includes(saved.appearance?.mode) ? saved.appearance.mode : "system",
         accent: COLOR_RE.test(saved.appearance?.accent || "") ? saved.appearance.accent : DEFAULT_ACCENT
       },
+      language: ["auto", "nl", "en"].includes(saved.language) ? saved.language : "auto",
       tasks: sanitizeTasks(saved.tasks),
       dashboard: {
         showTasks: saved.dashboard?.showTasks !== false,
@@ -224,10 +226,10 @@
 
   function validateImportedState(value) {
     if (!isPlainObject(value)) {
-      throw new Error("Ongeldig instellingenbestand.");
+      throw new Error(NS.i18n.t("error.invalidFile"));
     }
     if (!Array.isArray(value.groups) || !isPlainObject(value.courseSettings)) {
-      throw new Error("Dit bestand lijkt geen Toledo Organizer-configuratie te zijn.");
+      throw new Error(NS.i18n.t("error.notConfig"));
     }
     return mergeState(value);
   }
