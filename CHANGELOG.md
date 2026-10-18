@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.7.0 — 2026-10-18
+
+- Vakken vastpinnen: met het speldje zet je een vak bovenaan in "Vastgepind", buiten alle groepen. Opnieuw klikken zet het terug in zijn groep. In bewerkmodus kan je ook slepen.
+- Eigen volgorde voor de zijbalk: Taken, Binnenkort en Updates in de volgorde die jij wil (Instellingen > Dashboard).
+
 ## 0.6.0 — 2026-10-16
 
 - Engelse versie: alle teksten bestaan nu in het Nederlands en het Engels. De taal volgt automatisch je Toledo/browser, of kies zelf onder Instellingen > Uiterlijk.

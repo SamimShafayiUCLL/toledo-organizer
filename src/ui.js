@@ -72,6 +72,7 @@
     checkSquare: '<rect x="4" y="4" width="16" height="16" rx="3"/><path d="m8.5 12.5 2.5 2.5 4.5-5"/>',
     award: '<circle cx="12" cy="9" r="5.5"/><path d="m8.8 13.8-1.3 6.7L12 18.5l4.5 2-1.3-6.7"/>',
     book: '<path d="M5 4.5h9a3 3 0 0 1 3 3v12H8a3 3 0 0 1-3-3Z"/><path d="M5 16.5a3 3 0 0 1 3-3h9"/>',
+    pin: '<path d="M9 4h6l-1 6 3 3H7l3-3Z"/><path d="M12 13v7"/>',
     sparkle: '<path d="M12 3.5 13.8 10 20.5 12 13.8 14 12 20.5 10.2 14 3.5 12 10.2 10Z"/>'
   };
 
@@ -116,6 +117,7 @@
   // ---- smart sorting ----
   const AUTOSORT_STRATEGIES = ["institution-semester", "institution-program", "year-institution", "current-archive"];
 
+  const PINNED_ID = "__pinned__";
   const isCommunity = (course) => course?.type === "community" || course?.institution === "COMMUNITY";
 
   function currentYearCode(now = new Date()) {
@@ -156,6 +158,8 @@
     const groupIds = new Set((state?.groups || []).map((g) => g.id));
     const settings = state?.courseSettings || {};
     const titleOf = (c) => settings[c.key]?.customTitle || c.title || "";
+    const pinnedKeys = new Set(state?.pinned || []);
+    courses = courses.filter((c) => !pinnedKeys.has(c.key));
     const scope = courses.filter((c) => all || !(settings[c.key]?.groupId && groupIds.has(settings[c.key].groupId)));
     const overig = scope.filter(isCommunity);
     const real = scope.filter((c) => !isCommunity(c));
@@ -472,7 +476,12 @@
 
     renderAllCourses() {
       const section = el("section", { class: "to-section" });
-      const courses = this.sortCourses(this.getFilteredCourses());
+      const sorted = this.sortCourses(this.getFilteredCourses());
+      const pinnedKeys = this.state.pinned || [];
+      const courses = [
+        ...pinnedKeys.map((key) => sorted.find((c) => c.key === key)).filter(Boolean),
+        ...sorted.filter((c) => !pinnedKeys.includes(c.key))
+      ];
       section.append(
         el("div", { class: "to-section-heading" }, [
           el("h2", { text: t("all.heading", { n: courses.length }) }),
@@ -492,8 +501,11 @@
       const courses = this.getFilteredCourses();
       const byGroup = new Map();
       const unassigned = [];
+      const pinnedKeys = this.state.pinned || [];
+      const pinnedCourses = pinnedKeys.map((key) => courses.find((c) => c.key === key)).filter(Boolean);
 
       for (const course of courses) {
+        if (pinnedKeys.includes(course.key)) continue;
         const setting = this.courseSetting(course.key);
         const groupId = setting.groupId || null;
         if (groupId && this.state.groups.some((g) => g.id === groupId)) {
@@ -513,6 +525,8 @@
           })
         );
       }
+
+      if (pinnedCourses.length || this.state.editMode) wrap.append(this.renderPinned(pinnedCourses));
 
       const rootGroups = groupsMap.get("__root__") || [];
       for (const group of rootGroups) wrap.append(this.renderGroup(group, 1, groupsMap, byGroup));
@@ -540,6 +554,31 @@
       unassignedSection.append(unassignedList);
       wrap.append(unassignedSection);
       return wrap;
+    }
+
+    renderPinned(pinnedCourses) {
+      const section = el("section", {
+        class: "to-group depth-1 to-pinned",
+        "data-group-id": PINNED_ID,
+        "data-drop-type": this.state.editMode ? "course-group" : null
+      });
+      const pinIcon = el("span", { class: "to-pinned-icon" });
+      pinIcon.append(icon("pin"));
+      section.append(
+        el("div", { class: "to-group-header" }, [
+          el("div", { class: "to-group-title-wrap" }, [
+            pinIcon,
+            el("span", { class: "to-group-title", text: t("pinned.title") }),
+            el("span", { class: "to-count", text: String(pinnedCourses.length) })
+          ])
+        ])
+      );
+      const list = el("div", { class: "to-course-list" });
+      pinnedCourses.forEach((course) => list.append(this.renderCourse(course, PINNED_ID)));
+      const body = el("div", { class: "to-group-body" }, [list]);
+      if (!pinnedCourses.length) body.append(el("div", { class: "to-empty", text: t("pinned.empty") }));
+      section.append(body);
+      return section;
     }
 
     renderGroup(group, depth, groupsMap, byGroup) {
@@ -719,7 +758,9 @@
           ].filter(Boolean)
         );
       }
+      const isPinned = (this.state.pinned || []).includes(course.key);
       actions.append(
+        iconButton("pin", "toggle-pin", isPinned ? t("course.unpin") : t("course.pin"), `ghost tiny to-pin-btn${isPinned ? " is-pinned" : ""}`),
         iconButton("chevron", "toggle-course", expanded ? t("course.versions.hide") : t("course.versions.show"), "ghost tiny to-chevron")
       );
 
@@ -911,8 +952,53 @@
         box("dash-upcoming", t("dash.upcoming"), dash.showUpcoming !== false),
         box("dash-hero", t("dash.hero"), dash.showHero !== false),
         box("dash-feed", t("dash.feed"), dash.replaceFeed !== false),
-        box("dash-hide-info", t("dash.hideInfo"), dash.hideInfoPanel)
+        box("dash-hide-info", t("dash.hideInfo"), dash.hideInfoPanel),
+        this.dashOrderList()
       ];
+    }
+
+    dashOrderList() {
+      const order = this.dashOrder();
+      const names = { tasks: t("tasks.title"), upcoming: t("upcoming.title"), feed: t("feed.title") };
+      const list = el("div", { class: "to-order-list" }, [el("span", { class: "to-order-label", text: t("settings.dash.order") })]);
+      order.forEach((card, index) => {
+        const up = iconButton("up", "dash-order-up", t("settings.dash.moveUp"), "ghost tiny", "");
+        const down = iconButton("down", "dash-order-down", t("settings.dash.moveDown"), "ghost tiny");
+        up.dataset.value = card;
+        down.dataset.value = card;
+        up.disabled = index === 0;
+        down.disabled = index === order.length - 1;
+        list.append(el("div", { class: "to-order-item", "data-card": card }, [el("span", { class: "to-order-name", text: names[card] }), up, down]));
+      });
+      return list;
+    }
+
+    dashOrder() {
+      const order = this.state.dashboard?.order;
+      return Array.isArray(order) && order.length === 3 ? order : ["tasks", "upcoming", "feed"];
+    }
+
+    async moveDashCard(card, delta) {
+      const order = [...this.dashOrder()];
+      const index = order.indexOf(card);
+      const target = index + delta;
+      if (index < 0 || target < 0 || target >= order.length) return;
+      [order[index], order[target]] = [order[target], order[index]];
+      await this.patchState({ dashboard: { ...this.state.dashboard, order } });
+    }
+
+    async togglePin(courseKey) {
+      const course = this.findCourse(courseKey);
+      if (!course) return;
+      const pinned = this.state.pinned || [];
+      const name = this.courseTitle(course);
+      if (pinned.includes(courseKey)) {
+        await this.patchState({ pinned: pinned.filter((k) => k !== courseKey) });
+        this.toast(t("toast.unpinned", { name }));
+      } else {
+        await this.patchState({ pinned: [...pinned, courseKey].slice(-50) });
+        this.toast(t("toast.pinned", { name }));
+      }
     }
 
     autosortScope() {
@@ -1100,6 +1186,10 @@
       if (action === "clear-group-color") return this.setGroupColor(groupId, null);
       if (action === "toggle-group") return this.toggleGroup(groupId);
       if (action === "toggle-course") return this.toggleCourse(courseKey);
+      if (action === "toggle-pin") return this.togglePin(courseKey);
+      if (action === "dash-order-up" || action === "dash-order-down") {
+        return this.moveDashCard(actionEl.dataset.value, action === "dash-order-up" ? -1 : 1);
+      }
       if (action === "toggle-hidden") return this.toggleHidden(courseKey);
       if (action === "rename-course") return this.renameCourse(courseKey);
       if (action === "clear-course-color") return this.setCourseColor(courseKey, null);
@@ -1211,7 +1301,7 @@
       if (drag.type === "course") {
         if (type === "course-order") {
           if (zone.dataset.courseKey === drag.key) return null;
-          if (this.state.courseSort !== "custom") {
+          if (this.state.courseSort !== "custom" && zone.dataset.groupId !== PINNED_ID) {
             // Alphabetical view: order is automatic, so a course row just means "this group".
             return this.groupDrop(zone.closest('[data-drop-type="course-group"]'));
           }
@@ -1246,7 +1336,7 @@
       const header = target.closest?.(".to-group-header");
       if (header && this.root.contains(header)) {
         const section = header.closest(".to-group");
-        if (section.classList.contains("to-unassigned")) return this.groupGapDrop(event);
+        if (section.classList.contains("to-unassigned") || section.classList.contains("to-pinned")) return this.groupGapDrop(event);
         const rect = header.getBoundingClientRect();
         const rel = (event.clientY - rect.top) / rect.height;
         const open = !section.classList.contains("collapsed");
@@ -1256,7 +1346,7 @@
       }
 
       const section = target.closest?.(".to-group");
-      if (section && !section.classList.contains("to-unassigned") && this.root.contains(section)) {
+      if (section && !section.classList.contains("to-unassigned") && !section.classList.contains("to-pinned") && this.root.contains(section)) {
         const rect = section.getBoundingClientRect();
         return event.clientY > rect.bottom - 14 ? this.groupLineDrop(section, "after") : null;
       }
@@ -1266,7 +1356,7 @@
 
     // Pointer between top-level cards (or on "Niet ingedeeld"): place relative to the nearest root group.
     groupGapDrop(event) {
-      const roots = [...this.root.querySelectorAll(".to-structure > .to-group.depth-1")];
+      const roots = [...this.root.querySelectorAll(".to-structure > .to-group.depth-1:not(.to-pinned)")];
       const next = roots.find((section) => event.clientY < section.getBoundingClientRect().top + 8);
       if (next) return this.groupLineDrop(next, "before");
       return roots.length ? this.groupLineDrop(roots[roots.length - 1], "after") : null;
@@ -1587,6 +1677,13 @@
     }
 
     async reorderCourse(courseKey, delta) {
+      const pinned = this.state.pinned || [];
+      const pinIndex = pinned.indexOf(courseKey);
+      if (pinIndex >= 0) {
+        const neighbour = pinned[pinIndex + delta];
+        if (!neighbour) return;
+        return this.placeCourse(courseKey, PINNED_ID, neighbour, delta < 0 ? "before" : "after");
+      }
       const setting = this.courseSetting(courseKey);
       const groupId = setting.groupId || null;
       const siblings = this.sortCourses(
@@ -1603,6 +1700,21 @@
     async placeCourse(sourceKey, targetGroupId, targetKey, position, expandGroupIds = []) {
       const source = this.findCourse(sourceKey);
       if (!source) return;
+      const pinned = this.state.pinned || [];
+      if (targetGroupId === PINNED_ID) {
+        const next = pinned.filter((k) => k !== sourceKey);
+        let at = next.length;
+        if (targetKey) {
+          const ti = next.indexOf(targetKey);
+          if (ti >= 0) at = position === "after" ? ti + 1 : ti;
+        }
+        next.splice(at, 0, sourceKey);
+        this.flash(sourceKey);
+        await this.patchState({ pinned: next.slice(0, 50) });
+        if (!pinned.includes(sourceKey)) this.toast(t("toast.pinned", { name: this.courseTitle(source) }));
+        return;
+      }
+      const wasPinned = pinned.includes(sourceKey);
       const groupId = targetGroupId || null;
       const fromGroupId = this.courseSetting(sourceKey).groupId || null;
       const siblings = this.sortCourses(
@@ -1626,8 +1738,8 @@
         : this.state.groups;
 
       this.flash(sourceKey);
-      await this.patchState({ courseSettings, groups });
-      if (fromGroupId !== groupId) {
+      await this.patchState(wasPinned ? { courseSettings, groups, pinned: pinned.filter((k) => k !== sourceKey) } : { courseSettings, groups });
+      if (fromGroupId !== groupId || wasPinned) {
         const name = groupId ? groupLabel(this.state.groups.find((g) => g.id === groupId)) : t("unassigned.title");
         this.toast(t("move.toast", { course: this.courseTitle(source), group: name || t("move.groupFallback") }));
       }

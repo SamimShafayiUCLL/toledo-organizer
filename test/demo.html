@@ -120,6 +120,9 @@ window.chrome = {
     { id: "t3", text: L("Boeken terugbrengen"), done: true, due: null, tag: null, createdAt: 3, doneAt: 4 }
   ];
   state.editMode = params.get("edit") === "1";
+  state.pinned = ["KUL:E0K77a"];
+  const orderParam = (params.get("order") || "").split(",").filter(Boolean);
+  if (orderParam.length) state.dashboard.order = orderParam;
   const langParam = params.get("lang");
   if (langParam === "nl" || langParam === "en") state.language = langParam;
   NS.i18n.setLanguage(state.language);

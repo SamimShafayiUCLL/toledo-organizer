@@ -471,10 +471,13 @@
       this.renderHero(state, feed, upcomingAll, today);
 
       this.section.textContent = "";
-      if (dash.showTasks !== false) this.section.append(this.renderTasks(state, draft));
-      if (dash.showUpcoming !== false) this.section.append(this.renderUpcoming(upcoming));
       const showFeed = dash.replaceFeed !== false;
-      if (showFeed) this.section.append(this.renderFeed(feed, today));
+      const order = Array.isArray(dash.order) && dash.order.length === 3 ? dash.order : ["tasks", "upcoming", "feed"];
+      for (const card of order) {
+        if (card === "tasks" && dash.showTasks !== false) this.section.append(this.renderTasks(state, draft));
+        else if (card === "upcoming" && dash.showUpcoming !== false) this.section.append(this.renderUpcoming(upcoming));
+        else if (card === "feed" && showFeed) this.section.append(this.renderFeed(feed, today));
+      }
       document.documentElement.classList.toggle("to-feed-replaced", showFeed);
       if (focusedChip) this.section.querySelector(`.to-chip[data-value="${focusedChip}"]`)?.focus({ preventScroll: true });
 

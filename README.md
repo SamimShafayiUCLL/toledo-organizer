@@ -16,6 +16,7 @@
 - Groups and subgroups (up to 3 levels), drag and drop for courses and groups
 - One card per course: all academic years merged, with a default version that opens on click
 - Your own names and colours for courses and groups; hide courses you don't need
+- Pin your most important courses to the top, outside any group
 - **Slim indelen** (smart sorting): proposes groups by institution, semester, programme code or academic year, with a preview before anything moves
 - Search with `/`, sorting, and a one-click switch back to the original Toledo list
 
@@ -24,6 +25,7 @@
 - **Taken**: a to-do list right on Toledo, with due dates, overdue and today highlighted (`n` adds a task)
 - **Binnenkort**: upcoming deadlines and tests from your Toledo updates, one click away from becoming a task
 - **Updates**: Toledo's notifications rewritten (new content, announcement, deadline, test, grade), grouped by day and filterable; opening one still marks it as read in Toledo
+- Put Tasks, Upcoming and Updates in the order you like
 
 **A calmer Toledo**
 - A cleaner look for the whole Toledo portal, a wider layout with a sidebar that stays in view
@@ -71,6 +73,7 @@ MIT, see [LICENSE](LICENSE).
 ### Wat het doet
 
 - **Eigen indeling**: groepen en subgroepen (tot 3 niveaus), slepen en neerzetten, eigen namen en kleuren, vakken verbergen.
+- **Vastpinnen**: zet je belangrijkste vakken bovenaan, buiten elke groep.
 - **Eén kaart per vak**: alle academiejaren samen, met een standaardversie die opent als je klikt.
 - **Slim indelen**: stelt een indeling voor per instelling, semester, opleidingscode of academiejaar, met een voorbeeld vooraf.
 - **Taken**: een takenlijst op Toledo zelf, met deadlines; te laat en vandaag vallen op (sneltoets `n`).

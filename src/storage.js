@@ -7,6 +7,9 @@
   const MAX_TASKS = 500;
   const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
+  const DASH_ORDER = ["tasks", "upcoming", "feed"];
+  const MAX_PINNED = 50;
+
   const defaultState = () => ({
     schemaVersion: 2,
     viewMode: "organizer",
@@ -19,7 +22,7 @@
     appearance: { mode: "system", accent: DEFAULT_ACCENT },
     language: "auto",
     tasks: [],
-    dashboard: { showTasks: true, showUpcoming: true, hideInfoPanel: false, showHero: true, replaceFeed: true },
+    dashboard: { showTasks: true, showUpcoming: true, hideInfoPanel: false, showHero: true, replaceFeed: true, order: [...DASH_ORDER] },
     groups: [
       {
         id: OVERIG_ID,
@@ -32,6 +35,7 @@
       }
     ],
     courseSettings: {},
+    pinned: [],
     ui: {
       settingsOpen: false
     }
@@ -119,6 +123,22 @@
     return out;
   }
 
+  function sanitizePinned(raw) {
+    if (!Array.isArray(raw)) return [];
+    const out = [];
+    for (const key of raw) {
+      if (out.length >= MAX_PINNED) break;
+      if (typeof key !== "string" || !key || key === "__proto__" || out.includes(key)) continue;
+      out.push(key);
+    }
+    return out;
+  }
+
+  function sanitizeDashOrder(raw) {
+    const ok = Array.isArray(raw) && raw.length === DASH_ORDER.length && DASH_ORDER.every((k) => raw.includes(k)) && new Set(raw).size === DASH_ORDER.length;
+    return ok ? [...raw] : [...DASH_ORDER];
+  }
+
   function sanitizeTasks(raw) {
     if (!Array.isArray(raw)) return [];
     const seen = new Set();
@@ -181,10 +201,12 @@
         showUpcoming: saved.dashboard?.showUpcoming !== false,
         hideInfoPanel: Boolean(saved.dashboard?.hideInfoPanel),
         showHero: saved.dashboard?.showHero !== false,
-        replaceFeed: saved.dashboard?.replaceFeed !== false
+        replaceFeed: saved.dashboard?.replaceFeed !== false,
+        order: sanitizeDashOrder(saved.dashboard?.order)
       },
       groups,
       courseSettings: sanitizeCourseSettings(saved.courseSettings, groupIds),
+      pinned: sanitizePinned(saved.pinned),
       ui: {
         ...base.ui,
         // Modals are intentionally transient: never reopen after a refresh.

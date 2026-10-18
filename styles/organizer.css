@@ -927,3 +927,36 @@ html.to-dark .to-feed-icon { color: color-mix(in srgb, var(--to-item-color, var(
   .to-stat { flex: 1; min-width: 0; }
 }
 .to-topbar .to-btn.ghost.with-icon { color: var(--to-muted); }
+
+/* ---------- Pinned courses ---------- */
+.to-pinned > .to-group-header { background: color-mix(in srgb, var(--to-accent) 5%, var(--to-surface)); }
+.to-pinned-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  flex: none;
+  color: var(--to-accent-text);
+}
+.to-pinned-icon .to-icon { width: 15px; height: 15px; }
+.to-pin-btn { opacity: 0; transition: opacity 120ms ease, color 120ms ease; }
+.to-course:hover .to-pin-btn,
+.to-course:focus-within .to-pin-btn,
+.to-pin-btn.is-pinned { opacity: 1; }
+.to-pin-btn.is-pinned { color: var(--to-accent-text); }
+.to-pin-btn.is-pinned .to-icon { fill: color-mix(in srgb, currentColor 25%, transparent); }
+@media (hover: none) { .to-pin-btn { opacity: 1; } }
+
+/* ---------- Settings: sidebar order ---------- */
+.to-order-list { flex-basis: 100%; display: grid; gap: 4px; max-width: 340px; margin-top: 10px; }
+.to-order-label { color: var(--to-faint); font-size: 11.5px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; margin-bottom: 2px; }
+.to-order-item {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px 4px 3px 12px;
+  border: 1px solid var(--to-line);
+  border-radius: 8px;
+  background: var(--to-sunken);
+}
+.to-order-name { flex: 1; font-size: 13px; color: var(--to-text); }
