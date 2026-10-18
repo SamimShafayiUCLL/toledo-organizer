@@ -770,15 +770,14 @@ a.to-upcoming-title:hover { color: var(--to-accent-text) !important; text-decora
 
 /* ---------- Own updates feed ---------- */
 .to-count.is-zero { display: none; }
+/* Chips wrap instead of scrolling sideways (a hidden horizontal scroller only moved with Shift+wheel). */
 .to-feed-filters {
   display: flex;
+  flex-wrap: wrap;
   gap: 6px;
   padding: 10px 12px;
   border-bottom: 1px solid var(--to-line-soft);
-  overflow-x: auto;
-  scrollbar-width: none;
 }
-.to-feed-filters::-webkit-scrollbar { display: none; }
 .to-chip {
   flex: none;
   height: 26px;

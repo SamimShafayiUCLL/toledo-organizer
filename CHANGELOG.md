@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.7.1 — 2026-10-18
+
+- De filters bij Updates (Alles, Inhoud, Mededelingen...) lopen nu over twee regels in plaats van zijwaarts te scrollen, dus ze zijn altijd allemaal zichtbaar.
+
 ## 0.7.0 — 2026-10-18
 
 - Vakken vastpinnen: met het speldje zet je een vak bovenaan in "Vastgepind", buiten alle groepen. Opnieuw klikken zet het terug in zijn groep. In bewerkmodus kan je ook slepen.
